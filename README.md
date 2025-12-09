@@ -1,28 +1,60 @@
-# market-neutral-strategy
-Algorithmic trading model predicting stock rankings for the Numerai Hedge Fund tournament.
-# Numerai Tournament: Market Neutral Strategy
+# 🛡️ Project: Numerai Market Neutral Strategy (Zero Beta)
+### Automated Quantitative Trading Pipeline | LightGBM | Python
 
-### Project Overview
-This project implements a machine learning pipeline for the **Numerai Hedge Fund Tournament**, a crowdsourced quantitative trading competition. The objective is to predict the rank-ordered performance of nearly 5,000 global equities based on obfuscated financial features.
-
-This model contributes to a meta-model that powers a **Market Neutral Long/Short Equity Strategy**, designed to generate alpha regardless of broad market direction (zero beta).
-
-### Technical Approach
-* **Model Architecture:** Light Gradient Boosting Machine (LightGBM) Regressor.
-* **Feature Engineering:** Utilized Numerai's "Small" feature set (v5.1) for memory-efficient processing on cloud instances.
-* **Target:** 20-day returns relative to the market (Rank).
-* **Validation:** Time-series split based on "Eras" to prevent look-ahead bias (data leakage).
-
-### Workflow
-1.  **Data Ingestion:** Automated API retrieval of encrypted financial data via `numerapi`.
-2.  **Training:** Supervised learning on historical eras using decision tree ensembles.
-3.  **Inference:** Generating daily rank predictions (0 to 1) for live market data.
-4.  **Deployment:** Automated submission to the Numerai leaderboard.
-
-### Future Development
-* **Ensembling:** Integrating XGBoost and CatBoost models to reduce variance.
-* **Risk Management:** Implementing feature neutralization to limit exposure to single factors (e.g., momentum, volatility).
-* **Infrastructure:** Migrating from Cloud SaaS to local high-performance compute (Ryzen 9 / RTX Architecture).
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![Model](https://img.shields.io/badge/Model-LightGBM-green)
+![Strategy](https://img.shields.io/badge/Strategy-Market%20Neutral-orange)
+![Status](https://img.shields.io/badge/Status-Live%20Trading-red)
 
 ---
-*Author: Brian Penrod - DBA (Finance) & Quantitative Analyst*
+
+## 📋 Executive Summary
+**Objective:** To engineer a machine learning model capable of predicting the *relative* performance of 5,000 global equities, independent of market direction.
+
+**The Problem:** Traditional investing is exposed to "Beta" (Market Risk). If the S&P 500 drops 20%, most portfolios drop 20%.
+**The Solution:** A **Market Neutral (Zero Beta)** strategy. By predicting stock *rankings* (0 to 1) rather than raw prices, this system targets pure Alpha. It generates returns based on the model's intelligence, not the market's mood.
+
+---
+
+## 🎖️ Commander's Intent (The Philosophy)
+As a retired **US Army Special Operations CSM**, I approach financial modeling with the same discipline used in mission planning:
+1.  **Risk Mitigation First:** We do not bet on the direction of the wind (Market direction). We bet on the performance of the unit (Stock fundamentals).
+2.  **Simplicity is Speed:** We use a lightweight feature set to ensure the model is robust and generalizable, preventing "overfitting" (seeing patterns that aren't there).
+3.  **Skin in the Game:** This model participates in the Numerai Tournament, where cryptocurrency (NMR) is staked on its accuracy. Poor performance results in a "Burn" (loss of capital). Accountability is absolute.
+
+---
+
+## ⚙️ Technical Architecture
+
+### 1. The Engine: Light Gradient Boosting Machine (LightGBM)
+I selected `LightGBM` for its efficiency with tabular financial data. It uses tree-based learning to identify non-linear relationships between obfuscated market features and future returns.
+
+### 2. The Logistics: "Small" Feature Set (v5.1)
+Instead of using the full 2,000+ feature set, this pipeline utilizes the **"Small" feature set (~40 features)**.
+* **Tactical Reason:** Allows for training on standard hardware (RAM efficiency).
+* **Strategic Reason:** Acts as a form of **Regularization**. By limiting the input data to the most "mission-essential" signals, we force the model to learn broad, robust trends rather than memorizing noise.
+
+### 3. The Validation: Era-Wise Split
+Financial data is "Non-Stationary" (the rules change over time). To prevent **Look-Ahead Bias**, we strictly validate the model using Era-Wise Time Series splits, ensuring we never use future data to predict the past.
+
+---
+
+## 💻 Code Structure (The Pipeline)
+
+**Step 1: Ingestion & Feature Selection**
+Automated API calls via `numerapi` to retrieve the latest encrypted market data.
+```python
+import numerapi
+import pandas as pd
+import json
+
+# Initialize API (Keys are stored securely in environment variables)
+napi = numerapi.NumerAPI()
+
+# Smart Download: Only fetching essential metadata to save bandwidth
+napi.download_dataset("v5.1/features.json", "features.json")
+
+# Strategy: Load only the "Small" feature set to optimize memory
+with open("features.json", "r") as f:
+    feature_metadata = json.load(f)
+small_features = feature_metadata["feature_sets"]["small"]
