@@ -1,4 +1,8 @@
 numerapi
 pandas
-lightgbm
+polars
 pyarrow
+lightgbm
+xgboost
+psutil
+scipy
