@@ -41,6 +41,7 @@ graph TD
 
     Ensemble -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
     Neutral -->|Rank & Upload| API[Numerai API]:::output
+```
 📚 Key Documentation
 
 📄 Strategy White Paper: docs/WHITEPAPER.md
