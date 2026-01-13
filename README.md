@@ -37,6 +37,7 @@ graph TD
     LGBM -->|0.5| Ensemble((Weighted Signal)):::output
     XGB -->|0.5| Ensemble
     Ensemble -->|Rank & Upload| API[Numerai API]:::output
+```
 Key Documentation
 📄 Strategy White Paper: A detailed "Research Note" style explanation of the math, validation logic, and variance reduction theory.
 
