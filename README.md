@@ -44,7 +44,7 @@ graph TD
 ```
 📚 Key Documentation
 
-📄 Strategy White Paper: docs/WHITEPAPER.md
+📄 Strategy White Paper:[docs/WHITEPAPER.md](docs/WHITEPAPER.md)
 
 🗺️ System Map: SYSTEM_MAP.md
 
@@ -66,7 +66,9 @@ The ensemble combines LightGBM and XGBoost to capture both deep non-linear inter
 Post-processing applies OLS orthogonalization / neutralization to reduce linear correlations between predictions and the selected feature set, isolating more idiosyncratic signal from common risk factors.
 
 🚀 Quick Start
-```pip install -U numerapi lightgbm xgboost pandas polars pyarrow scipy
+```markdown
+```bash
+pip install -U numerapi lightgbm xgboost pandas polars pyarrow scipy
 ```
 Execution (Production Mode)
 ```import os
