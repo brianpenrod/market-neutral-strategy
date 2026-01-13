@@ -38,29 +38,29 @@ graph TD
     XGB -->|0.5| Ensemble
     Ensemble -->|Rank & Upload| API[Numerai API]:::output
 ```
-Key Documentation
-📄 Strategy White Paper: A detailed "Research Note" style explanation of the math, validation logic, and variance reduction theory.
+---
 
-🗺️ System Map: Full architectural diagram and strategic doctrine definitions.
+## 📚 Key Documentation
+* **📄 [Strategy White Paper](NUMERAI_MARKET_NEUTRAL_STRATEGY.md):** A detailed "Research Note" style explanation of the math, validation logic, and variance reduction theory.
+* **🗺️ [System Map](SYSTEM_MAP.md):** Full architectural diagram and strategic doctrine definitions.
 
-⚙️ Core Capabilities
-1. The "Chronological Firewall"
-Standard K-Fold cross-validation is rejected to prevent look-ahead bias. This model utilizes an Era-wise TimeSeriesSplit, training on the first 80% of eras and validating strictly on the subsequent 20%.
+---
 
-2. High-Performance Ingestion (Polars)
-Utilizes Rust-based Polars for lazy-loading of the ~50GB+ dataset, enabling rapid iteration on Google Colab Pro+ (A100 GPU) environments.
+## ⚙️ Core Capabilities
 
-3. Regime Adaptation
-The ensemble combines Gradient-based One-Side Sampling (LightGBM) with Histogram-based Splitting (XGBoost) to capture both deep non-linear interactions and broad structural signals.
-🚀 Quick Start
-Prerequisites
+### 1. The "Chronological Firewall"
+Standard K-Fold cross-validation is rejected to prevent look-ahead bias. This model utilizes an **Era-wise TimeSeriesSplit**, training on the first 80% of eras and validating strictly on the subsequent 20%.
+
+### 2. High-Performance Ingestion (Polars)
+Utilizes Rust-based `Polars` for lazy-loading of the ~50GB+ dataset, enabling rapid iteration on Google Colab Pro+ (A100 GPU) environments.
+
+### 3. Regime Adaptation
+The ensemble combines **Gradient-based One-Side Sampling (LightGBM)** with **Histogram-based Splitting (XGBoost)** to capture both deep non-linear interactions and broad structural signals.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+```bash
 pip install numerapi lightgbm xgboost pandas polars pyarrow
-Execution (Production Mode)
-# Authenticate & Engage Watchdog
-import numerapi
-napi = numerapi.NumerAPI(public_id="YOUR_ID", secret_key="YOUR_KEY")
-
-if napi.check_round_open():
-    print(">>> ENGAGING TWIN ENGINES...")
-    # ... (Load Pipeline)
-© 2026 Dr. Brian Penrod. All Rights Reserved.
