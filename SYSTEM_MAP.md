@@ -47,7 +47,9 @@ graph TD
 
     %% --- LINKS ---
     Val -->|Backtest| Mean
-## Architectural Deep Dive
+```
+
+ ## Architectural Deep Dive
 
 ### 1. The "Twin-Engine" Doctrine (Ensemble Theory)
 **Strategic Intent:** Variance Reduction & Signal Stability.
