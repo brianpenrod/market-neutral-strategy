@@ -1,4 +1,4 @@
-# Numerai Market Neutral Strategy (v2.2)
+# PROJECT: KINETIC ZERO (v2.3)
 **Production-Grade Quantitative Architecture for Global Equity Ranking**
 
 ![Status](https://img.shields.io/badge/Status-Production-success)
@@ -10,12 +10,13 @@
 
 ## 👨‍💼 Executive Summary
 **Author:** Dr. Brian Penrod, DBA  
-**Objective:** Generate rank-ordered predictive signals for the Numerai Hedge Fund Tournament using a "Twin-Engine" Ensemble architecture.  
-**Key Differentiator:** Strict adherence to **Chronological Regime Separation** (No Look-Ahead Bias) and **Feature Neutrality**.
+**Codename:** KINETIC ZERO  
+**Objective:** Generate rank-ordered predictive signals for the Numerai Hedge Fund Tournament using a "Twin-Engine" Ensemble architecture reinforced by OLS Orthogonalization.  
+**Key Differentiator:** Strict adherence to **Chronological Regime Separation** (No Look-Ahead Bias) and **Phase 4 Feature Neutralization**.
 
 ---
 
-## 🏗️ System Architecture (The "Twin Engines")
+## 🏗️ System Architecture (Kinetic Zero Protocol)
 *For a detailed architectural deep dive, see [SYSTEM_MAP.md](SYSTEM_MAP.md).*
 
 ```mermaid
@@ -24,6 +25,7 @@ graph TD
     classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
     classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
     classDef model fill:#1B5E20,stroke:#00cc96,stroke-width:2px,color:#fff;
+    classDef logic fill:#b71c1c,stroke:#ef553b,stroke-width:2px,color:#fff;
     classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
     Raw[Numerai Parquet]:::raw -->|Polars Ingestion| Features[Medium Set ~780 Features]:::process
@@ -36,31 +38,6 @@ graph TD
 
     LGBM -->|0.5| Ensemble((Weighted Signal)):::output
     XGB -->|0.5| Ensemble
-    Ensemble -->|Rank & Upload| API[Numerai API]:::output
-```
----
-
-## 📚 Key Documentation
-* **📄 [Strategy White Paper](NUMERAI_MARKET_NEUTRAL_STRATEGY.md):** A detailed "Research Note" style explanation of the math, validation logic, and variance reduction theory.
-* **🗺️ [System Map](SYSTEM_MAP.md):** Full architectural diagram and strategic doctrine definitions.
-
----
-
-## ⚙️ Core Capabilities
-
-### 1. The "Chronological Firewall"
-Standard K-Fold cross-validation is rejected to prevent look-ahead bias. This model utilizes an **Era-wise TimeSeriesSplit**, training on the first 80% of eras and validating strictly on the subsequent 20%.
-
-### 2. High-Performance Ingestion (Polars)
-Utilizes Rust-based `Polars` for lazy-loading of the ~50GB+ dataset, enabling rapid iteration on Google Colab Pro+ (A100 GPU) environments.
-
-### 3. Regime Adaptation
-The ensemble combines **Gradient-based One-Side Sampling (LightGBM)** with **Histogram-based Splitting (XGBoost)** to capture both deep non-linear interactions and broad structural signals.
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-```bash
-pip install numerapi lightgbm xgboost pandas polars pyarrow
+    
+    Ensemble -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
+    Neutral -->|Rank & Upload| API[Numerai API]:::output
