@@ -46,7 +46,7 @@ graph TD
 
 📄 Strategy White Paper:[docs/WHITEPAPER.md](docs/WHITEPAPER.md)
 
-🗺️ System Map: SYSTEM_MAP.md
+🗺️ System Map: [SYSTEM_MAP.md](SYSTEM_MAP.md)
 
 ⚙️ Core Capabilities
 1) The “Chronological Firewall”
