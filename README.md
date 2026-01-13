@@ -66,11 +66,10 @@ The ensemble combines LightGBM and XGBoost to capture both deep non-linear inter
 Post-processing applies OLS orthogonalization / neutralization to reduce linear correlations between predictions and the selected feature set, isolating more idiosyncratic signal from common risk factors.
 
 🚀 Quick Start
-Install
-pip install -U numerapi lightgbm xgboost pandas polars pyarrow scipy
-
+```pip install -U numerapi lightgbm xgboost pandas polars pyarrow scipy
+```
 Execution (Production Mode)
-import os
+```import os
 from numerapi import NumerAPI
 
 napi = NumerAPI(
@@ -83,6 +82,5 @@ if napi.check_round_open():
     # TODO: load -> train -> ensemble -> neutralize -> rank -> upload
 else:
     print(">>> Round is closed. Standing by.")
-
-
+```
 © 2026 Dr. Brian Penrod. All Rights Reserved.
