@@ -40,8 +40,8 @@ graph TD
     XGB -->|0.5| Ensemble
 
     Ensemble -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
-    Neutral -->|Rank & Upload| API[Numerai API]:::output
-```
+    Neutral -->|Rank & Upload| API[Numerai API]:::output```
+
 📚 Key Documentation
 
 📄 Strategy White Paper: docs/WHITEPAPER.md
