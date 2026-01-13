@@ -10,9 +10,9 @@
 
 ## 👨‍💼 Executive Summary
 **Author:** Dr. Brian Penrod, DBA  
-**Codename:** KINETIC ZERO  
-**Objective:** Generate rank-ordered predictive signals for the Numerai Hedge Fund Tournament using a "Twin-Engine" Ensemble architecture reinforced by OLS Orthogonalization.  
-**Key Differentiator:** Strict adherence to **Chronological Regime Separation** (No Look-Ahead Bias) and **Phase 4 Feature Neutralization**.
+**Codename:** **KINETIC ZERO**  
+**Objective:** Generate rank-ordered predictive signals for the Numerai Tournament using a **Twin-Engine** ensemble (LightGBM + XGBoost) reinforced by **OLS orthogonalization / neutralization**.  
+**Key Differentiator:** Strict adherence to **chronological regime separation** (no look-ahead bias) and **Phase 4 feature neutralization**.
 
 ---
 
@@ -29,8 +29,8 @@ graph TD
     classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
     Raw[Numerai Parquet]:::raw -->|Polars Ingestion| Features[Medium Set ~780 Features]:::process
-    Features -->|Time-Series Split| Train[Training Set]:::raw
-    
+    Features -->|Era-aware Split| Train[Training Set]:::raw
+
     subgraph ENGINES ["THE TWIN ENGINES"]
         Train --> LGBM[Engine 1: LightGBM]:::model
         Train --> XGB[Engine 2: XGBoost]:::model
@@ -38,41 +38,50 @@ graph TD
 
     LGBM -->|0.5| Ensemble((Weighted Signal)):::output
     XGB -->|0.5| Ensemble
-    
+
     Ensemble -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
     Neutral -->|Rank & Upload| API[Numerai API]:::output
-```
 📚 Key Documentation
-📄 Strategy White Paper: A detailed "Research Note" style explanation of the math, validation logic, and variance reduction theory.
 
-🗺️ System Map: Full architectural diagram and strategic doctrine definitions.
+📄 Strategy White Paper: docs/WHITEPAPER.md
+
+🗺️ System Map: SYSTEM_MAP.md
 
 ⚙️ Core Capabilities
-1. The "Chronological Firewall"
-Standard K-Fold cross-validation is rejected to prevent look-ahead bias. This model utilizes an Era-wise TimeSeriesSplit, training on the first 80% of eras and validating strictly on the subsequent 20%.
+1) The “Chronological Firewall”
 
-2. High-Performance Ingestion (Polars)
-Utilizes Rust-based Polars for lazy-loading of the ~50GB+ dataset, enabling rapid iteration on Google Colab Pro+ (A100 GPU) environments.
+Standard K-Fold cross-validation is rejected to prevent look-ahead bias. This model uses an era-wise chronological split, training on the first ~80% of eras and validating strictly on the subsequent ~20%.
 
-3. Regime Adaptation
-The ensemble combines Gradient-based One-Side Sampling (LightGBM) with Histogram-based Splitting (XGBoost) to capture both deep non-linear interactions and broad structural signals.
+2) High-Performance Ingestion (Polars)
 
-4. Kinetic Neutralization (Phase 4)
-Post-processing logic applies OLS Orthogonalization to strip linear correlations between the model's predictions and the feature set, isolating idiosyncratic "Alpha" from common risk factors.
+Utilizes Polars for fast Parquet ingestion and transformation, enabling rapid iteration in local or hosted environments (e.g., Colab).
+
+3) Regime Adaptation (Twin-Engine Ensemble)
+
+The ensemble combines LightGBM and XGBoost to capture both deep non-linear interactions and broader structural signals.
+
+4) Kinetic Neutralization (Phase 4)
+
+Post-processing applies OLS orthogonalization / neutralization to reduce linear correlations between predictions and the selected feature set, isolating more idiosyncratic signal from common risk factors.
 
 🚀 Quick Start
-Prerequisites
-Bash
+Install
+pip install -U numerapi lightgbm xgboost pandas polars pyarrow scipy
 
-pip install numerapi lightgbm xgboost pandas polars pyarrow scipy
 Execution (Production Mode)
-Python
+import os
+from numerapi import NumerAPI
 
-# Authenticate & Engage Kinetic Zero
-import numerapi
-napi = numerapi.NumerAPI(public_id="YOUR_ID", secret_key="YOUR_KEY")
+napi = NumerAPI(
+    public_id=os.getenv("NAPI_PUBLIC_ID", "YOUR_ID"),
+    secret_key=os.getenv("NAPI_SECRET_KEY", "YOUR_KEY"),
+)
 
 if napi.check_round_open():
     print(">>> ENGAGING KINETIC ZERO...")
-    # ... (Load Pipeline)
+    # TODO: load -> train -> ensemble -> neutralize -> rank -> upload
+else:
+    print(">>> Round is closed. Standing by.")
+
+
 © 2026 Dr. Brian Penrod. All Rights Reserved.
