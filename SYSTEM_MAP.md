@@ -1,5 +1,6 @@
-# System Architecture: Twin-Engine Market Neutral Strategy
-**Status:** Production (v2.2)
+# System Architecture: Project Kinetic Zero
+**Status:** Production (v2.3)
+**Codename:** KINETIC ZERO
 **Infrastructure:** Google Colab Pro+ / NVIDIA A100
 
 ```mermaid
@@ -36,12 +37,13 @@ graph TD
         XGB -.->|Robust Splits| Spot(The Spotter)
     end
 
-    %% --- ENSEMBLE ---
-    subgraph EXECUTION ["PHASE 4: ENSEMBLE & DEPLOYMENT"]
+    %% --- ENSEMBLE & RISK ---
+    subgraph EXECUTION ["PHASE 4: EXECUTION & DEFENSE"]
         LGBM -->|Pred A| Mean((Weighted Average)):::process
         XGB -->|Pred B| Mean
         
-        Mean -->|0.5 * A + 0.5 * B| Signal[Final Rank Signal]:::output
+        Mean -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
+        Neutral -->|Rank-Ordered Signal| Signal[Final Submission]:::output
         Signal -->|Upload| API[Numerai API]:::output
     end
 
@@ -49,36 +51,43 @@ graph TD
     Val -->|Backtest| Mean
 ```
 
- ## Architectural Deep Dive
+## Architectural Deep Dive
 
 ### 1. The "Twin-Engine" Doctrine (Ensemble Theory)
 **Strategic Intent:** Variance Reduction & Signal Stability.
 
-In high-noise financial environments, single-model architectures (e.g., a standalone XGBoost) often suffer from idiosyncratic overfitting—memorizing "noise" specific to the training era rather than learning generalized "signal."
+In high-noise financial environments, single-model architectures often suffer from idiosyncratic overfitting. To mitigate this, we deploy a **Heterogeneous Ensemble**:
 
-To mitigate this, we deploy a **Heterogeneous Ensemble** (The "Twin Engines"):
-
-* **Engine 1: LightGBM ("The Sniper")**
-    * **Architecture:** Gradient-based One-Side Sampling (GOSS).
-    * [cite_start]**Role:** Focuses on depth-wise leaf growth to capture complex, non-linear interactions in the "Medium" feature set[cite: 237].
-* **Engine 2: XGBoost ("The Spotter")**
-    * **Architecture:** Histogram-based splitting (`tree_method='hist'`).
-    * [cite_start]**Role:** Prioritizes computational efficiency and broad structural patterns[cite: 238].
+* **Engine 1: LightGBM ("The Sniper"):** Uses Gradient-based One-Side Sampling (GOSS) to capture deep, non-linear interactions in the feature set.
+* **Engine 2: XGBoost ("The Spotter"):** Uses Histogram-based splitting (`tree_method='hist'`) to identify broad structural market patterns.
 
 **The Output:**
-[cite_start]By averaging the rank-normalized predictions ($0.5 \cdot P_{LGBM} + 0.5 \cdot P_{XGB}$), we effectively cancel out the uncorrelated errors of each individual model[cite: 238]. [cite_start]This increases the **Sharpe Ratio** (risk-adjusted return) by stabilizing performance across volatile market regimes[cite: 230].
+By averaging the rank-normalized predictions ($0.5 \cdot P_{LGBM} + 0.5 \cdot P_{XGB}$), we effectively cancel out the uncorrelated errors of each individual model, stabilizing the Sharpe Ratio.
 
 ---
 
 ### 2. The "Chronological Firewall" (Stationarity Defense)
 **Strategic Intent:** Elimination of Look-Ahead Bias.
 
-Standard data science practices (like Random K-Fold Cross-Validation) are catastrophic in finance. [cite_start]Randomly shuffling data allows a model to "peek" at future volatility to predict past returns, creating a theoretical performance that vanishes in live trading[cite: 11].
+Standard Random K-Fold Cross-Validation is rejected. We enforce a strict **Chronological Firewall**:
 
-**Our Protocol:**
-We enforce a strict **Chronological Firewall** in the validation logic:
-1.  **Time-Series Split:** The dataset is ordered by `Era` (Time).
-2.  [cite_start]**The Cutoff:** The model is trained *only* on the first 80% of history ($t_{0} \to t_{cutoff}$)[cite: 237].
-3.  [cite_start]**The Test:** Validation occurs *only* on the subsequent 20% ($t_{cutoff} \to t_{end}$), ensuring the model is tested on "unseen future" data[cite: 7].
+* **Time-Series Split:** The dataset is ordered by `Era` (Time).
+* **The Cutoff:** The model is trained *only* on the first 80% of history.
+* **The Test:** Validation occurs *only* on the subsequent 20%, ensuring the model is tested on "unseen future" data.
 
-[cite_start]This architecture respects the **Non-Stationarity** of financial markets—acknowledging that the statistical properties of 2008 do not perfectly mirror 2024[cite: 12]. [cite_start]If the model survives this firewall with a Sharpe > 1.5, it is deemed production-ready[cite: 3].
+This respects the **Non-Stationarity** of financial markets—acknowledging that the statistical properties of the past do not perfectly mirror the future.
+
+---
+
+### 3. Kinetic Neutralization (Phase 4 Risk Management)
+**Strategic Intent:** Market Neutrality (Zero Beta).
+
+This is the defining upgrade of the v2.3 architecture. Raw model predictions often correlate linearly with broad market risk factors (volatility, momentum, size). We do not want to bet on "The Market"; we want to bet on "Alpha."
+
+**The Protocol:**
+We apply **OLS (Ordinary Least Squares) Orthogonalization** to the final predictions before submission.
+
+* **Input:** The raw Weighted Average signal.
+* **Logic:** We regress the signal against the feature set to isolate the component that is purely "beta."
+* **Math:** $P_{neutral} = P_{raw} - \beta \cdot (Features)$
+* **Outcome:** The resulting signal is mathematically orthogonal (perpendicular) to the risk factors. This creates a "Zero Beta" portfolio that generates returns based on stock-specific performance, independent of whether the S&P 500 rises or falls.
