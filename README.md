@@ -44,7 +44,8 @@ graph TD
 ```
 📚 Key Documentation
 
-📄 Strategy White Paper:whitepaper.md
+📄 Strategy White Paper: whitepaper.md
+
 🗺️ System Map: [SYSTEM_MAP.md](SYSTEM_MAP.md)
 
 ⚙️ Core Capabilities
