@@ -44,7 +44,7 @@ graph TD
 ```
 📚 Key Documentation
 
-📄 Strategy White Paper: [https://github.com/brianpenrod/market-neutral-strategy/blob/1e0400ae353cf9710aa83147580347c380710441/NUMERAI_MARKET_NEUTRAL_STRATEGY.md)
+📄 Strategy White Paper: https://github.com/brianpenrod/market-neutral-strategy/blob/baaf2d00855e87f8e2c5682d28b152dcd38beb9e/whitepaper.md
 
 🗺️ System Map: [SYSTEM_MAP.md](SYSTEM_MAP.md)
 
