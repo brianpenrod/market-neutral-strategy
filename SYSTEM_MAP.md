@@ -1,3 +1,4 @@
+```mermaid
 graph TD
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
   classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
@@ -74,5 +75,6 @@ graph TD
     warn --> ok["Diversification OK"]:::process
   end
 
-  dry --> INGESTION
-  prod --> INGESTION
+  dry --> api
+  prod --> api
+```
