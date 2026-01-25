@@ -29,17 +29,18 @@ For the detailed operational diagram, see **[SYSTEM_MAP.md](SYSTEM_MAP.md)**.
   "lineColor":"#475569",
   "secondaryColor":"#ECFDF5",
   "tertiaryColor":"#FFF7ED",
-  "fontFamily":"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto"
+  "fontFamily":"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+  "fontSize":"16px"
 }}}%%
-flowchart TD
+flowchart TB
 
-  %% --- NODE STYLES ---
-  classDef config fill:#E0F2FE,stroke:#0369A1,stroke-width:2px,color:#0B1020;
-  classDef secrets fill:#FEF3C7,stroke:#B45309,stroke-width:2px,color:#0B1020;
-  classDef script fill:#EDE9FE,stroke:#6D28D9,stroke-width:2px,color:#0B1020;
-  classDef gate fill:#FFE4E6,stroke:#BE123C,stroke-width:2px,color:#0B1020;
-  classDef action fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#0B1020;
-  classDef output fill:#FCE7F3,stroke:#BE185D,stroke-width:2px,color:#0B1020;
+  %% --- NODE STYLES (add padding to reduce truncation) ---
+  classDef config fill:#E0F2FE,stroke:#0369A1,stroke-width:2px,color:#0B1020,padding:12px;
+  classDef secrets fill:#FEF3C7,stroke:#B45309,stroke-width:2px,color:#0B1020,padding:12px;
+  classDef script fill:#EDE9FE,stroke:#6D28D9,stroke-width:2px,color:#0B1020,padding:12px;
+  classDef gate fill:#FFE4E6,stroke:#BE123C,stroke-width:2px,color:#0B1020,padding:14px;
+  classDef action fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#0B1020,padding:12px;
+  classDef output fill:#FCE7F3,stroke:#BE185D,stroke-width:2px,color:#0B1020,padding:12px;
 
   %% --- EXECUTIVE MAP ---
   cfg["config.yaml<br/>(runtime + model specs)"]:::config
@@ -55,8 +56,8 @@ flowchart TD
   cfg --> cmd
   env --> cmd
   cmd --> mode
-  mode -->|DRYRUN| dry
-  mode -->|PRODUCTION| prod
+  mode -->|DRY| dry
+  mode -->|PROD| prod
   dry --> out
   prod --> out
 ```
