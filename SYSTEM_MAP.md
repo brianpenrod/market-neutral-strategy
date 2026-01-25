@@ -4,81 +4,90 @@ This diagram shows the end-to-end control plane, data ingestion, per-model train
 
 ```mermaid
 graph TD
+  %% ===================== STYLES =====================
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
   classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
   classDef model fill:#1B5E20,stroke:#00cc96,stroke-width:2px,color:#fff;
   classDef logic fill:#b71c1c,stroke:#ef553b,stroke-width:2px,color:#fff;
   classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
-  subgraph CONTROL["CONTROL PLANE"]
-    cfg["config.yaml runtime + model specs"]:::raw --> spec["MODEL_SPECS (3 slots)"]:::process
-    env["Env vars: RISK_MODE + NUMERAI_KEYS"]:::raw --> gate{"RISK_MODE"}:::logic
+  %% ===================== CONTROL PLANE =====================
+  subgraph CONTROL["CONTROL PLANE (CONFIG + SAFETY)"]
+    cfg["config.yaml: runtime + model specs"]:::raw --> specs["MODEL SPECS (3 slots)"]:::process
+    env["Env vars: NUMERAI_PUBLIC_ID + NUMERAI_SECRET_KEY"]:::raw --> gate{"RISK_MODE"}:::logic
     gate --> dry["DRYRUN: no wait, no upload"]:::logic
     gate --> prod["PRODUCTION: wait + upload"]:::logic
   end
 
-  subgraph INGESTION["PHASE 1: INGESTION"]
+  %% ===================== INGESTION =====================
+  subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
     api["NumerAPI"]:::process --> dl["Download: features.json, train.parquet, live.parquet"]:::process
-    dl --> polars["Polars scan_parquet (lazy collect)"]:::process
+    dl --> metaOpt["(Optional) meta_model.parquet"]:::raw
+    dl --> polars["Polars scan_parquet -> collect"]:::process
     polars --> train["train_df"]:::raw
     polars --> live["live_df"]:::raw
-    train --> clean["Clean + fill NaN/Inf"]:::process
-    live --> clean2["Clean + fill NaN/Inf"]:::process
-    clean --> era["Parse era to int"]:::process
+    train --> cleanT["Clean train (fill NaN/Inf)"]:::process
+    live --> cleanL["Clean live (fill NaN/Inf)"]:::process
+    cleanT --> era["Parse era -> int"]:::process
   end
 
-  subgraph VALIDATION["PHASE 2: VALIDATION"]
-    era --> split{"Chronological split (80/20)"}:::logic
+  %% ===================== VALIDATION =====================
+  subgraph VALIDATION["PHASE 2: VALIDATION (NO LOOKAHEAD)"]
+    era --> split{"Chronological split (80/20 by era)"}:::logic
     split --> tr["train_split"]:::raw
     split --> va["val_split"]:::raw
-    split -.-> note1["Chronological firewall (no lookahead)"]:::logic
+    split -.-> firewall["Chronological firewall"]:::logic
   end
 
-  subgraph MULTI["PHASE 3: PER-MODEL LOOP"]
-    spec --> loop["For each ModelSpec: CORE, BAL, DEF"]:::process
-    tr --> lgbm["LightGBM"]:::model
-    tr --> xgb["XGBoost"]:::model
+  %% ===================== PER-MODEL LOOP =====================
+  subgraph MULTI["PHASE 3: PER-MODEL LOOP (CORE / BAL / DEF)"]
+    specs --> loop["For each ModelSpec"]:::process
 
-    lgbm --> ensV["Ensemble preds (val)"]:::process
-    xgb --> ensV
-    ensV --> rankV["Per-era rank (val)"]:::process
-    rankV --> corr["Corr proxy (val)"]:::logic
+    tr --> lgbm["Engine A: LightGBM"]:::model
+    tr --> xgb["Engine B: XGBoost"]:::model
+
+    lgbm --> valEns["Ensemble preds (val)"]:::process
+    xgb --> valEns
+    valEns --> rankVal["Per-era rank (val)"]:::process
+    rankVal --> corrProxy["Corr proxy (val)"]:::logic
 
     loop --> retrain["Retrain on full train_df"]:::process
     retrain --> lgbmF["LightGBM full"]:::model
     retrain --> xgbF["XGBoost full"]:::model
 
-    lgbmF --> ensL["Ensemble preds (live)"]:::process
-    xgbF --> ensL
+    lgbmF --> liveEns["Ensemble preds (live)"]:::process
+    xgbF --> liveEns
 
-    ensL --> neut{"Neutralize?"}:::logic
+    liveEns --> neut{"Neutralize ratio > 0 ?"}:::logic
     neut --> neutLive["Neutralize to features (ridge)"]:::logic
     neut --> rawLive["Raw live signal"]:::process
 
-    meta["meta_model.parquet (optional)"]:::raw --> demeta{"De-meta enabled and available?"}:::logic
+    metaOpt --> demeta{"De-meta enabled + available?"}:::logic
     neutLive --> demeta
     rawLive --> demeta
     demeta --> orth["Orthogonalize to meta"]:::logic
-    demeta --> noorth["Skip de-meta"]:::process
+    demeta --> noOrth["Skip de-meta"]:::process
 
-    orth --> final["Final rank pct + safety checks"]:::logic
-    noorth --> final
+    orth --> final["Final rank pct + safety checks (NaN/flat/jitter)"]:::logic
+    noOrth --> final
     final --> csv["Write submission CSV per model"]:::output
   end
 
-  subgraph OPS["PHASE 4: UPLOAD + CHECKS"]
-    prod --> slots["get_models resolve slots (case-insensitive)"]:::logic
+  %% ===================== UPLOAD + OPS =====================
+  subgraph OPS["PHASE 4: UPLOAD + OPS CHECKS"]
+    prod --> slots["Resolve slots via get_models (case-insensitive)"]:::logic
     csv --> allow{"Upload allowed?"}:::logic
-    allow --> skip["DRYRUN skip upload"]:::logic
+    allow --> skip["DRYRUN: skip upload"]:::logic
     allow --> up["upload_predictions"]:::output
     slots --> up
 
-    csv --> corrM["Cross-model correlation (live)"]:::logic
-    corrM --> warn{"Any pair > 0.985?"}:::logic
-    warn --> dup["Flag duplicates; change ONE lever next round"]:::logic
-    warn --> ok["Diversification OK"]:::process
+    csv --> corrM["Cross-model correlation (live preds)"]:::logic
+    corrM --> dup{"Any pair > 0.985?"}:::logic
+    dup --> fix["Flag duplicates; change ONE lever next round"]:::logic
+    dup --> ok["Diversification OK"]:::process
   end
 
+  %% ===================== FLOW CONTROL =====================
   dry --> api
   prod --> api
 ```
