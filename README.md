@@ -46,7 +46,7 @@ flowchart TB
   cfg["config.yaml<br/>(runtime + model specs)"]:::config
   env["Env vars<br/>(NUMERAI_PUBLIC_ID / SECRET_KEY)"]:::secrets
   cmd["numerai_multi_model_commander.py"]:::script
-  mode{"RISK_MODE"}:::gate
+  mode{"MODE"}:::gate
 
   dry["DRYRUN<br/>Download + Train + Predict<br/>Write CSVs"]:::action
   prod["PRODUCTION<br/>Wait round-open + Upload<br/>per model slot"]:::action
@@ -56,8 +56,8 @@ flowchart TB
   cfg --> cmd
   env --> cmd
   cmd --> mode
-  mode -->|DRY| dry
-  mode -->|PROD| prod
+  mode --> dry
+  mode --> prod
   dry --> out
   prod --> out
 ```
