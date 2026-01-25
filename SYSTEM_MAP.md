@@ -1,16 +1,13 @@
+# Kinetic Zero — System Map (Multi-Model Commander)
+
+```mermaid
 graph TD
-  %% =========================
-  %% STYLES
-  %% =========================
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
   classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
   classDef model fill:#1B5E20,stroke:#00cc96,stroke-width:2px,color:#fff;
   classDef logic fill:#b71c1c,stroke:#ef553b,stroke-width:2px,color:#fff;
   classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
-  %% =========================
-  %% CONFIG + CONTROL PLANE
-  %% =========================
   subgraph CONTROL["CONTROL PLANE: CONFIG + SAFETY"]
     cfg[config.yaml<br/>runtime + model_specs]:::raw --> spec[MODEL_SPECS<br/>3 slots]:::process
     env[Env Vars<br/>RISK_MODE + NUMERAI_KEYS]:::raw --> gate{RISK_MODE?}:::logic
@@ -18,9 +15,6 @@ graph TD
     gate -->|PRODUCTION| prod[PROD: Wait for round-open + upload]:::logic
   end
 
-  %% =========================
-  %% DATA INGESTION
-  %% =========================
   subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
     api[NumerAPI]:::process --> dl[Download v5.1<br/>features.json + train.parquet + live.parquet]:::process
     dl --> polars[Polars scan_parquet<br/>(lazy -> collect)]:::process
@@ -31,9 +25,6 @@ graph TD
     clean --> era[Parse era -> int]:::process
   end
 
-  %% =========================
-  %% VALIDATION: CHRONO SPLIT
-  %% =========================
   subgraph VALIDATION["PHASE 2: CHRONOLOGICAL VALIDATION (NO LOOKAHEAD)"]
     era --> split{Era Cutoff<br/>(~80/20)}:::logic
     split --> tr[(train_split)]:::raw
@@ -42,62 +33,43 @@ graph TD
     split -.-> note1
   end
 
-  %% =========================
-  %% PER-SLOT PIPELINE (LOOP)
-  %% =========================
   subgraph MULTI["PHASE 3: MULTI-SLOT EXECUTION LOOP (per ModelSpec)"]
     spec --> loop[For each ModelSpec:<br/>KZ_CORE_N00 / KZ_BAL_N50 / KZ_DEF_N75_DM]:::process
 
-    %% Engines
     loop --> lgbm[Engine A: LightGBM]:::model
     loop --> xgb[Engine B: XGBoost]:::model
-
     tr --> lgbm
     tr --> xgb
 
-    %% Validation scoring
     lgbm --> pA[Pred_A (val)]:::process
     xgb --> pB[Pred_B (val)]:::process
     pA --> ensV((Weighted Ensemble)):::process
     pB --> ensV
-    va --> rankV[Per-era Rank]:::process
-    ensV --> rankV
-
+    ensV --> rankV[Per-era Rank]:::process
+    va --> rankV
     rankV --> corr[CORR proxy<br/>per-era corr -> sharpe_like]:::logic
 
-    %% Optional validation neutralization proxy (ranked)
-    rankV --> neutV{Neutralize?}:::logic
-    neutV -->|Yes (ratio > 0)| neutRank[Neutralize by era<br/>ridge residualization]:::logic
-    neutV -->|No| passV[Skip]:::process
-    neutRank --> corrN[NEUT CORR proxy]:::logic
-    passV --> corrN
-
-    %% Retrain full
-    loop --> retrain[Retrain on FULL train_df]:::process
+    ensV --> retrain[Retrain on FULL train_df]:::process
     retrain --> lgbmF[LightGBM full]:::model
     retrain --> xgbF[XGBoost full]:::model
     clean --> lgbmF
     clean --> xgbF
 
-    %% Live prediction
     lgbmF --> pAL[Pred_A (live)]:::process
     xgbF --> pBL[Pred_B (live)]:::process
     pAL --> ensL((Weighted Ensemble)):::process
     pBL --> ensL
 
-    %% Optional live neutralization
     ensL --> neutL{Submit neutralized?}:::logic
     neutL -->|Yes| neutLive[Neutralize to features<br/>(ridge residualization)]:::logic
     neutL -->|No| rawLive[Raw live signal]:::process
 
-    %% Optional de-meta (if enabled & meta available)
     meta[(meta_model.parquet<br/>(optional))]:::raw --> demeta{De-meta enabled<br/>& meta available?}:::logic
     neutLive --> demeta
     rawLive --> demeta
     demeta -->|Yes| orth[Rank + Gaussianize<br/>Orthogonalize to meta]:::logic
     demeta -->|No| noorth[Skip de-meta]:::process
 
-    %% Final shaping
     orth --> rankL[Final rank(pct)]:::process
     noorth --> rankL
 
@@ -105,28 +77,20 @@ graph TD
     checks --> csv[Write submission_<model>.csv]:::output
   end
 
-  %% =========================
-  %% UPLOAD + PORTFOLIO REPORTING
-  %% =========================
   subgraph OPS["PHASE 4: UPLOAD + PORTFOLIO OVERSIGHT"]
-    prod --> slots[Resolve model slots<br/>get_models()<br/>case-insensitive]:::logic
+    prod --> slots[Resolve model slots<br/>get_models() + case-insensitive match]:::logic
     csv --> gate2{Upload allowed?}:::logic
     gate2 -->|DRYRUN| skip[Skip upload]:::logic
     gate2 -->|PRODUCTION| up[upload_predictions()]:::output
     slots --> up
     up --> status[Numerai UI: awaiting -> submitted]:::output
 
-    %% Diversification report
     csv --> corrM[Cross-model correlation<br/>(live preds)]:::logic
     corrM --> warn{Any pair > 0.985?}:::logic
     warn -->|Yes| dup[Flag duplication<br/>recommend 1 lever change]:::logic
     warn -->|No| ok[Diversification OK]:::process
   end
 
-  %% =========================
-  %% LINKS BETWEEN PHASES
-  %% =========================
   dry --> INGESTION
   prod --> INGESTION
   corr --> OPS
-  corrN --> OPS
