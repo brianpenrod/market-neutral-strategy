@@ -1,3 +1,7 @@
+# Kinetic Zero — System Map (Multi-Model Numerai Commander)
+
+This diagram shows the end-to-end control plane, data ingestion, per-model training loop, risk gates (DRYRUN vs PROD), and upload safeguards for the three-slot deployment.
+
 ```mermaid
 graph TD
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
