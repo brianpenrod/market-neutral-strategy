@@ -15,15 +15,16 @@ graph TD
     gate -->|PRODUCTION| prod[PROD: Wait for round-open + upload]:::logic
   end
 
-  subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
-    api[NumerAPI]:::process --> dl[Download v5.1<br/>features.json + train.parquet + live.parquet]:::process
-    dl --> polars[Polars scan_parquet<br/>(lazy -> collect)]:::process
-    polars --> train[(train_df)]:::raw
-    polars --> live[(live_df)]:::raw
-    train --> clean[Clean + Fill NaN/Inf]:::process
-    live --> clean2[Clean + Fill NaN/Inf]:::process
-    clean --> era[Parse era -> int]:::process
-  end
+ subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
+  api[NumerAPI]:::process --> dl[Download v5.1<br/>features.json, train.parquet, live.parquet]:::process
+  dl --> polars[Polars scan_parquet<br/>(lazy → collect)]:::process
+  polars --> train[(train_df)]:::raw
+  polars --> live[(live_df)]:::raw
+  train --> clean[Clean + Fill NaN/Inf]:::process
+  live --> clean2[Clean + Fill NaN/Inf]:::process
+  clean --> era[Parse era to int]:::process
+end
+
 
   subgraph VALIDATION["PHASE 2: CHRONOLOGICAL VALIDATION (NO LOOKAHEAD)"]
     era --> split{Era Cutoff<br/>(~80/20)}:::logic
