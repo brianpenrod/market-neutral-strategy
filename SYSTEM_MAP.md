@@ -1,93 +1,132 @@
-# System Architecture: Project Kinetic Zero
-**Status:** Production (v2.3)
-**Codename:** KINETIC ZERO
-**Infrastructure:** Google Colab Pro+ / NVIDIA A100
-
-```mermaid
 graph TD
-    %% --- STYLES ---
-    classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
-    classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
-    classDef model fill:#1B5E20,stroke:#00cc96,stroke-width:2px,color:#fff;
-    classDef logic fill:#b71c1c,stroke:#ef553b,stroke-width:2px,color:#fff;
-    classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
+  %% =========================
+  %% STYLES
+  %% =========================
+  classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
+  classDef process fill:#0D47A1,stroke:#000,stroke-width:2px,color:#fff;
+  classDef model fill:#1B5E20,stroke:#00cc96,stroke-width:2px,color:#fff;
+  classDef logic fill:#b71c1c,stroke:#ef553b,stroke-width:2px,color:#fff;
+  classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
-    %% --- DATA INGESTION ---
-    subgraph INGESTION ["PHASE 1: INGESTION (Polars)"]
-        Raw[Numerai v5.1 Parquet]:::raw -->|Lazy Load| Polars[Polars DataFrame]:::process
-        Polars -->|Filter| Features[Medium Set ~780 Features]:::process
-    end
+  %% =========================
+  %% CONFIG + CONTROL PLANE
+  %% =========================
+  subgraph CONTROL["CONTROL PLANE: CONFIG + SAFETY"]
+    cfg[config.yaml<br/>runtime + model_specs]:::raw --> spec[MODEL_SPECS<br/>3 slots]:::process
+    env[Env Vars<br/>RISK_MODE + NUMERAI_KEYS]:::raw --> gate{RISK_MODE?}:::logic
+    gate -->|DRYRUN| dry[DRYRUN: No wait, No upload]:::logic
+    gate -->|PRODUCTION| prod[PROD: Wait for round-open + upload]:::logic
+  end
 
-    %% --- VALIDATION LOGIC ---
-    subgraph VALIDATION ["PHASE 2: REGIME SEPARATION"]
-        Features --> Split{Chronological Split}:::logic
-        Split -->|Era 0 - 80%| Train[Training Set]:::raw
-        Split -->|Era > 80%| Val[Validation Set]:::raw
-        
-        note1[STRICT CUTOFF<br/>No Look-Ahead Bias]:::logic
-        Split -.-> note1
-    end
+  %% =========================
+  %% DATA INGESTION
+  %% =========================
+  subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
+    api[NumerAPI]:::process --> dl[Download v5.1<br/>features.json + train.parquet + live.parquet]:::process
+    dl --> polars[Polars scan_parquet<br/>(lazy -> collect)]:::process
+    polars --> train[(train_df)]:::raw
+    polars --> live[(live_df)]:::raw
+    train --> clean[Clean + Fill NaN/Inf]:::process
+    live --> clean2[Clean + Fill NaN/Inf]:::process
+    clean --> era[Parse era -> int]:::process
+  end
 
-    %% --- MODELING ---
-    subgraph ENGINES ["PHASE 3: TWIN-ENGINE TRAINING"]
-        Train -->|Gradient One-Side Sampling| LGBM[Engine 1: LightGBM]:::model
-        Train -->|Histogram Method| XGB[Engine 2: XGBoost]:::model
-        
-        LGBM -.->|Deep Trees| Snipe(The Sniper)
-        XGB -.->|Robust Splits| Spot(The Spotter)
-    end
+  %% =========================
+  %% VALIDATION: CHRONO SPLIT
+  %% =========================
+  subgraph VALIDATION["PHASE 2: CHRONOLOGICAL VALIDATION (NO LOOKAHEAD)"]
+    era --> split{Era Cutoff<br/>(~80/20)}:::logic
+    split --> tr[(train_split)]:::raw
+    split --> va[(val_split)]:::raw
+    note1[Chronological Firewall<br/>No shuffling]:::logic
+    split -.-> note1
+  end
 
-    %% --- ENSEMBLE & RISK ---
-    subgraph EXECUTION ["PHASE 4: EXECUTION & DEFENSE"]
-        LGBM -->|Pred A| Mean((Weighted Average)):::process
-        XGB -->|Pred B| Mean
-        
-        Mean -->|OLS Orthogonalization| Neutral[Kinetic Neutralization]:::logic
-        Neutral -->|Rank-Ordered Signal| Signal[Final Submission]:::output
-        Signal -->|Upload| API[Numerai API]:::output
-    end
+  %% =========================
+  %% PER-SLOT PIPELINE (LOOP)
+  %% =========================
+  subgraph MULTI["PHASE 3: MULTI-SLOT EXECUTION LOOP (per ModelSpec)"]
+    spec --> loop[For each ModelSpec:<br/>KZ_CORE_N00 / KZ_BAL_N50 / KZ_DEF_N75_DM]:::process
 
-    %% --- LINKS ---
-    Val -->|Backtest| Mean
-```
+    %% Engines
+    loop --> lgbm[Engine A: LightGBM]:::model
+    loop --> xgb[Engine B: XGBoost]:::model
 
-## Architectural Deep Dive
+    tr --> lgbm
+    tr --> xgb
 
-### 1. The "Twin-Engine" Doctrine (Ensemble Theory)
-**Strategic Intent:** Variance Reduction & Signal Stability.
+    %% Validation scoring
+    lgbm --> pA[Pred_A (val)]:::process
+    xgb --> pB[Pred_B (val)]:::process
+    pA --> ensV((Weighted Ensemble)):::process
+    pB --> ensV
+    va --> rankV[Per-era Rank]:::process
+    ensV --> rankV
 
-In high-noise financial environments, single-model architectures often suffer from idiosyncratic overfitting. To mitigate this, we deploy a **Heterogeneous Ensemble**:
+    rankV --> corr[CORR proxy<br/>per-era corr -> sharpe_like]:::logic
 
-* **Engine 1: LightGBM ("The Sniper"):** Uses Gradient-based One-Side Sampling (GOSS) to capture deep, non-linear interactions in the feature set.
-* **Engine 2: XGBoost ("The Spotter"):** Uses Histogram-based splitting (`tree_method='hist'`) to identify broad structural market patterns.
+    %% Optional validation neutralization proxy (ranked)
+    rankV --> neutV{Neutralize?}:::logic
+    neutV -->|Yes (ratio > 0)| neutRank[Neutralize by era<br/>ridge residualization]:::logic
+    neutV -->|No| passV[Skip]:::process
+    neutRank --> corrN[NEUT CORR proxy]:::logic
+    passV --> corrN
 
-**The Output:**
-By averaging the rank-normalized predictions ($0.5 \cdot P_{LGBM} + 0.5 \cdot P_{XGB}$), we effectively cancel out the uncorrelated errors of each individual model, stabilizing the Sharpe Ratio.
+    %% Retrain full
+    loop --> retrain[Retrain on FULL train_df]:::process
+    retrain --> lgbmF[LightGBM full]:::model
+    retrain --> xgbF[XGBoost full]:::model
+    clean --> lgbmF
+    clean --> xgbF
 
----
+    %% Live prediction
+    lgbmF --> pAL[Pred_A (live)]:::process
+    xgbF --> pBL[Pred_B (live)]:::process
+    pAL --> ensL((Weighted Ensemble)):::process
+    pBL --> ensL
 
-### 2. The "Chronological Firewall" (Stationarity Defense)
-**Strategic Intent:** Elimination of Look-Ahead Bias.
+    %% Optional live neutralization
+    ensL --> neutL{Submit neutralized?}:::logic
+    neutL -->|Yes| neutLive[Neutralize to features<br/>(ridge residualization)]:::logic
+    neutL -->|No| rawLive[Raw live signal]:::process
 
-Standard Random K-Fold Cross-Validation is rejected. We enforce a strict **Chronological Firewall**:
+    %% Optional de-meta (if enabled & meta available)
+    meta[(meta_model.parquet<br/>(optional))]:::raw --> demeta{De-meta enabled<br/>& meta available?}:::logic
+    neutLive --> demeta
+    rawLive --> demeta
+    demeta -->|Yes| orth[Rank + Gaussianize<br/>Orthogonalize to meta]:::logic
+    demeta -->|No| noorth[Skip de-meta]:::process
 
-* **Time-Series Split:** The dataset is ordered by `Era` (Time).
-* **The Cutoff:** The model is trained *only* on the first 80% of history.
-* **The Test:** Validation occurs *only* on the subsequent 20%, ensuring the model is tested on "unseen future" data.
+    %% Final shaping
+    orth --> rankL[Final rank(pct)]:::process
+    noorth --> rankL
 
-This respects the **Non-Stationarity** of financial markets—acknowledging that the statistical properties of the past do not perfectly mirror the future.
+    rankL --> checks[Safety checks:<br/>NaN fill + jitter if flat]:::logic
+    checks --> csv[Write submission_<model>.csv]:::output
+  end
 
----
+  %% =========================
+  %% UPLOAD + PORTFOLIO REPORTING
+  %% =========================
+  subgraph OPS["PHASE 4: UPLOAD + PORTFOLIO OVERSIGHT"]
+    prod --> slots[Resolve model slots<br/>get_models()<br/>case-insensitive]:::logic
+    csv --> gate2{Upload allowed?}:::logic
+    gate2 -->|DRYRUN| skip[Skip upload]:::logic
+    gate2 -->|PRODUCTION| up[upload_predictions()]:::output
+    slots --> up
+    up --> status[Numerai UI: awaiting -> submitted]:::output
 
-### 3. Kinetic Neutralization (Phase 4 Risk Management)
-**Strategic Intent:** Market Neutrality (Zero Beta).
+    %% Diversification report
+    csv --> corrM[Cross-model correlation<br/>(live preds)]:::logic
+    corrM --> warn{Any pair > 0.985?}:::logic
+    warn -->|Yes| dup[Flag duplication<br/>recommend 1 lever change]:::logic
+    warn -->|No| ok[Diversification OK]:::process
+  end
 
-This is the defining upgrade of the v2.3 architecture. Raw model predictions often correlate linearly with broad market risk factors (volatility, momentum, size). We do not want to bet on "The Market"; we want to bet on "Alpha."
-
-**The Protocol:**
-We apply **OLS (Ordinary Least Squares) Orthogonalization** to the final predictions before submission.
-
-* **Input:** The raw Weighted Average signal.
-* **Logic:** We regress the signal against the feature set to isolate the component that is purely "beta."
-* **Math:** $P_{neutral} = P_{raw} - \beta \cdot (Features)$
-* **Outcome:** The resulting signal is mathematically orthogonal (perpendicular) to the risk factors. This creates a "Zero Beta" portfolio that generates returns based on stock-specific performance, independent of whether the S&P 500 rises or falls.
+  %% =========================
+  %% LINKS BETWEEN PHASES
+  %% =========================
+  dry --> INGESTION
+  prod --> INGESTION
+  corr --> OPS
+  corrN --> OPS
