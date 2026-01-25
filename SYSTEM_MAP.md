@@ -82,3 +82,9 @@ graph TD
   dry --> api
   prod --> api
 ```
+## Legend
+- **Raw**: datasets, config, environment variables  
+- **Process**: ingestion, transforms, orchestration steps  
+- **Model**: LightGBM / XGBoost training + inference components  
+- **Logic**: safety gates, splits, neutralization / de-meta decisions  
+- **Output**: CSV artifacts + Numerai API uploads
