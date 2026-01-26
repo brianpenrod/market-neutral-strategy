@@ -25,55 +25,88 @@ A raw predictive model often inadvertently learns to mimic the broader market. I
 ---
 
 ## 3. System Architecture (The "Kinetic" Protocol)
-To counter these flaws, Kinetic Zero employs a rigid, three-stage pipeline.
+KINETIC ZERO is implemented as a **config-driven, multi-model deployment**. A single execution engine produces **multiple submissions** (independent Numerai model slots) per round to enforce diversification and controlled experimentation.
 
-### 3.1 The Chronological Firewall
-We reject random shuffling. Validation is performed strictly via **Era-Wise Time Series Split**:
-* **Training Domain:** Eras $t_{0} \to t_{cutoff}$ (80%)
-* **Validation Domain:** Eras $t_{cutoff} \to t_{end}$ (20%)
+### 3.1 Control Plane (Config + Risk Gate)
+The system is governed by:
+- **config.yaml**: defines per-slot model specs (feature set, weights, neutralization ratio)
+- **Environment variables**: NUMERAI_PUBLIC_ID / NUMERAI_SECRET_KEY
+- **RISK_MODE gate**:
+  - **DRYRUN**: trains + predicts + writes CSVs (no upload)
+  - **PRODUCTION**: waits for round open + uploads per model slot
 
-This mimics the arrow of time. The model is forced to forecast a future regime it has never seen, ensuring that the Sharpe Ratio obtained in validation is a realistic proxy for live performance.
+### 3.2 Data Ingestion (NumerAPI + Polars)
+- Downloads **features.json**, **train.parquet**, **live.parquet**
+- Uses **Polars** for efficient parquet scan/selection (feature-set constrained)
+- Converts to pandas only at the final modeling interface
+- Applies hard cleaning: fill/clip NaN/Inf, enforce schema consistency
 
-### 3.2 The Heterogeneous Twin-Engine
-Single-model systems suffer from specific algorithmic blind spots. We deploy a "Twin-Engine" ensemble to maximize signal diversity:
+### 3.3 Chronological Firewall (Era-wise Split)
+Validation uses an era-wise chronological split (no shuffling):
+- Train domain: first ~80% of eras
+- Validation domain: last ~20% of eras
 
-| Engine | Algorithm | Role ("Call Sign") | Mathematical Edge |
-| :--- | :--- | :--- | :--- |
-| **Engine 1** | **LightGBM** | "The Sniper" | Uses **GOSS (Gradient-based One-Side Sampling)** to focus exclusively on data instances with large gradients (errors), refining the model's precision on difficult assets. |
-| **Engine 2** | **XGBoost** | "The Spotter" | Uses **Histogram-based Splitting** to rapidly categorize continuous features, capturing broad structural patterns and support/resistance zones across the feature space. |
+This preserves the arrow of time and forces forward generalization.
 
-**Ensemble Logic:**
-$$S_{ensemble} = 0.5 \cdot \sigma(E_{LGBM}) + 0.5 \cdot \sigma(E_{XGB})$$
-*Where $\sigma$ represents rank-normalization to uniform distribution $[0,1]$.*
-
+### 3.4 Per-Slot Execution Loop (Multi-Model Doctrine)
+For each ModelSpec (e.g., CORE / BAL / DEF):
+1) Train LightGBM + XGBoost on train split
+2) Evaluate on validation split (rank-based era correlation proxy)
+3) Retrain on full train
+4) Predict live
+5) Apply per-slot post-processing (neutralization ratio may differ)
+6) Write per-slot CSV to `/submissions/submission_<MODEL>.csv`
+7) If PRODUCTION: upload to the matching Numerai model slot
 ---
 
 ## 4. Risk Management (The "Zero" Protocol)
-The defining capability of v2.3 is **Kinetic Neutralization**. We do not rely on the model to "learn" safety; we mathematically enforce it post-inference.
+The defining capability is **post-model risk control**. Safety is not “learned”; it is enforced.
 
-### 4.1 OLS Orthogonalization
-We assume the ensemble's raw prediction ($Y_{raw}$) contains a mixture of true alpha ($\alpha$) and unwanted risk exposure ($\beta X$). We aim to isolate $\alpha$.
+### 4.1 OLS / Ridge Neutralization (Per Slot)
+Raw predictions contain a mixture of alpha and exposure:
+Y_raw = α + βX + ε
 
-We perform a linear regression of the predictions against the feature set ($X$) to solve for $\beta$:
-$$Y_{raw} = \beta X + \epsilon$$
+We remove linear exposure by subtracting the fitted component:
+Y_neutral = Y_raw - λ(βX)
 
-We then subtract the linear component ($\beta X$) from the original prediction:
-$$Y_{neutral} = Y_{raw} - \lambda (\beta X)$$
+Where:
+- X is the feature matrix (or selected exposure set)
+- β is estimated via OLS/ridge regression
+- λ is the **neutralization proportion**, configured **per model slot**
 
-* Where $\lambda$ is the **Neutralization Proportion** (currently set to 0.50).
-* The result, $Y_{neutral}$, is mathematically orthogonal (perpendicular) to the risk factors.
+### 4.2 Multi-Slot Risk Posture
+The live deployment intentionally spans different λ values to balance:
+- **Signal amplitude** (lower λ)
+- **Exposure control / robustness** (higher λ)
 
-### 4.2 Strategic Implication
-This transformation ensures the strategy is **Market Neutral**.
-* **Scenario A (Market Crash):** The model has stripped out correlation to volatility factors. Performance is preserved.
-* **Scenario B (Sector Rotation):** The model has stripped out sector-specific betas. Performance is driven by stock selection, not sector lift.
+Example operational posture:
+- CORE: λ = 0.00 (baseline signal, no neutralization)
+- BAL:  λ = 0.50 (balanced)
+- DEF:  λ = 0.75 (defensive)
 
+This creates a structured diversification gradient rather than three nearly identical submissions.
 ---
 
-## 5. Infrastructure & Scalability
-* **Ingestion:** Migrated to **Polars (Rust)** for lazy-loading of the ~50GB Numerai dataset, enabling "Medium" feature set (~780 features) processing on standard RAM.
-* **Compute:** Optimized for NVIDIA A100 Tensor Cores via CUDA-accelerated XGBoost/LightGBM builds.
+## 5. Operational Safety & Deployment (Production Discipline)
+KINETIC ZERO includes guardrails to prevent common Numerai operational failures:
 
+### 5.1 Upload Safety
+- Default mode is DRYRUN unless explicitly set to PRODUCTION.
+- Model slots are resolved from `get_models()` at runtime.
+- Slot lookup is case-insensitive, but uploads are never “guessed.”
+
+### 5.2 Submission Validity Checks (Per Slot)
+Before upload:
+- reject NaN/Inf predictions
+- reject flat/constant predictions
+- log summary statistics (mean/std/min/max)
+- enforce correct ID column alignment
+
+### 5.3 Diversification Monitoring
+After generating all live submissions:
+- compute cross-model live correlation matrix
+- treat correlation > 0.985 as “duplicate risk”
+- enforce “one change per round” if duplicates appear (weights OR λ OR model params)
 ---
 
 ## 6. Conclusion
