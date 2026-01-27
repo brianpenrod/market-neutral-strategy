@@ -67,4 +67,5 @@ flowchart TB
 * **Core Engine:** The data ingestion layer utilizes **Polars**—leveraging **Rust** under the hood—to ensure non-blocking execution and superior memory management compared to standard Pandas.
 * **Scalability:** This infrastructure guarantees the throughput necessary to scale from the current "Medium" feature set to the **'Super Massive' (~2,000+ feature)** dataset without refactoring.
 * **Hardware Roadmap:** Designed for transition from Cloud GPU (A100) to Local HPC (Ryzen 9 / RTX 5090) for on-premise model training.
+  
 © 2026 Dr. Brian Penrod. All Rights Reserved.
