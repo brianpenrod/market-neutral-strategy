@@ -10,8 +10,7 @@
 
 ## Executive Summary
 **Author:** Dr. Brian Penrod, DBA  
-**Codename:** **KINETIC ZERO**  
-**Mission:** Generate rank-ordered predictive signals for the Numerai Tournament via a controlled, reproducible pipeline.  
+**Codename:** **KINETIC ZERO** **Mission:** Generate rank-ordered predictive signals for the Numerai Tournament via a controlled, reproducible pipeline.  
 **Architecture:** Multi-slot deployment using a **Twin-Engine ensemble** (LightGBM + XGBoost) with optional **feature neutralization** and optional **de-meta orthogonalization**.  
 **Key Discipline:** **Chronological regime separation** (no look-ahead bias) + strict **ops safety gates** (DRYRUN by default).
 
