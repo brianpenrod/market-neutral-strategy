@@ -1,3 +1,15 @@
+# Market Neutral Strategy: Causal Factor-Aware Alpha Engine
+### Codename: "Operation Overwatch"
+
+> **Executive Summary:** A high-performance quantitative trading engine designed for the Numerai Hedge Fund Tournament. This system leverages **Causal Discovery (LiNGAM)** to identify idiosyncratic alpha and utilizes a proprietary **Risk Molding** protocol to orthogonalize signals against latent market factors (Beta), ensuring pure, uncorrelated returns.
+
+---
+
+## 🏗 System Architecture: The Operational Map
+
+The architecture follows a strict Event-Driven Pipeline designed for **v5.2 "Faith2"** data integrity. It separates the **Alpha Generation** (Signal) from the **Risk Management** (Exposure), allowing for dynamic portfolio construction from a single intelligence source.
+
+```mermaid
 graph TD
   %% ===================== STYLES =====================
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
