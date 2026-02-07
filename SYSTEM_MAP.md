@@ -1,8 +1,3 @@
-# Kinetic Zero — System Map (Multi-Model Numerai Commander)
-
-This diagram shows the end-to-end control plane, data ingestion, per-model training loop, risk gates (DRYRUN vs PROD), and upload safeguards for the three-slot deployment.
-
-```mermaid
 graph TD
   %% ===================== STYLES =====================
   classDef raw fill:#2d2d2d,stroke:#555,stroke-width:2px,color:#fff;
@@ -12,88 +7,71 @@ graph TD
   classDef output fill:#4a148c,stroke:#aa00ff,stroke-width:2px,color:#fff;
 
   %% ===================== CONTROL PLANE =====================
-  subgraph CONTROL["CONTROL PLANE (CONFIG + SAFETY)"]
-    cfg["config.yaml: runtime + model specs"]:::raw --> specs["MODEL SPECS (3 slots)"]:::process
-    env["Env vars: NUMERAI_PUBLIC_ID + NUMERAI_SECRET_KEY"]:::raw --> gate{"RISK_MODE"}:::logic
-    gate --> dry["DRYRUN: no wait, no upload"]:::logic
-    gate --> prod["PRODUCTION: wait + upload"]:::logic
+  subgraph CONTROL["CONTROL PLANE"]
+    env["Env vars: PUBLIC_ID + SECRET_KEY"]:::raw --> gate{"RISK_MODE"}:::logic
+    target["Target: target (v5.2 Standard)"]:::raw --> gate
+    gate --> dry["DRYRUN: No Upload"]:::logic
+    gate --> prod["PRODUCTION: Live Upload"]:::logic
   end
 
-  %% ===================== INGESTION =====================
-  subgraph INGESTION["PHASE 1: INGESTION (NumerAPI + Polars)"]
-    api["NumerAPI"]:::process --> dl["Download: features.json, train.parquet, live.parquet"]:::process
-    dl --> metaOpt["(Optional) meta_model.parquet"]:::raw
-    dl --> polars["Polars scan_parquet -> collect"]:::process
-    polars --> train["train_df"]:::raw
-    polars --> live["live_df"]:::raw
-    train --> cleanT["Clean train (fill NaN/Inf)"]:::process
-    live --> cleanL["Clean live (fill NaN/Inf)"]:::process
-    cleanT --> era["Parse era -> int"]:::process
+  %% ===================== LOGISTICS =====================
+  subgraph LOGISTICS["PHASE 1: INTELLIGENCE LOGISTICS (v5.2)"]
+    api["NumerAPI"]:::process --> patch{"Live Intel Patch"}:::logic
+    patch -->|Force Delete| fresh["Download Fresh live.parquet"]:::process
+    patch -->|Check Exists| train["Load train.parquet"]:::process
+    
+    fresh --> castL["Cast Int8 -> Float32"]:::process
+    train --> castT["Cast Int8 -> Float32"]:::process
+    
+    castL --> uniCheck{"Universe Safety Check (>5500 rows?)"}:::logic
+    uniCheck -->|Pass| readyL["Live Matrix (Float32)"]:::raw
+    castT --> readyT["Train Matrix (Float32)"]:::raw
   end
 
-  %% ===================== VALIDATION =====================
-  subgraph VALIDATION["PHASE 2: VALIDATION (NO LOOKAHEAD)"]
-    era --> split{"Chronological split (80/20 by era)"}:::logic
-    split --> tr["train_split"]:::raw
-    split --> va["val_split"]:::raw
-    split -.-> firewall["Chronological firewall"]:::logic
+  %% ===================== CAUSAL DISCOVERY =====================
+  subgraph CAUSAL["PHASE 2: CAUSAL DISCOVERY (LiNGAM)"]
+    readyT --> lingam["DirectLiNGAM: Learn Structure"]:::model
+    lingam --> pairs["Identify Causal Pairs (A -> B)"]:::output
+    
+    pairs --> augT["Augment Train (Interaction Terms)"]:::process
+    pairs --> augL["Augment Live (Interaction Terms)"]:::process
+    
+    readyT --> augT
+    readyL --> augL
   end
 
-  %% ===================== PER-MODEL LOOP =====================
-  subgraph MULTI["PHASE 3: PER-MODEL LOOP (CORE / BAL / DEF)"]
-    specs --> loop["For each ModelSpec"]:::process
-
-    tr --> lgbm["Engine A: LightGBM"]:::model
-    tr --> xgb["Engine B: XGBoost"]:::model
-
-    lgbm --> valEns["Ensemble preds (val)"]:::process
-    xgb --> valEns
-    valEns --> rankVal["Per-era rank (val)"]:::process
-    rankVal --> corrProxy["Corr proxy (val)"]:::logic
-
-    loop --> retrain["Retrain on full train_df"]:::process
-    retrain --> lgbmF["LightGBM full"]:::model
-    retrain --> xgbF["XGBoost full"]:::model
-
-    lgbmF --> liveEns["Ensemble preds (live)"]:::process
-    xgbF --> liveEns
-
-    liveEns --> neut{"Neutralize ratio > 0 ?"}:::logic
-    neut --> neutLive["Neutralize to features (ridge)"]:::logic
-    neut --> rawLive["Raw live signal"]:::process
-
-    metaOpt --> demeta{"De-meta enabled + available?"}:::logic
-    neutLive --> demeta
-    rawLive --> demeta
-    demeta --> orth["Orthogonalize to meta"]:::logic
-    demeta --> noOrth["Skip de-meta"]:::process
-
-    orth --> final["Final rank pct + safety checks (NaN/flat/jitter)"]:::logic
-    noOrth --> final
-    final --> csv["Write submission CSV per model"]:::output
+  %% ===================== THE CORE FORGE =====================
+  subgraph FORGE["PHASE 3: ALPHA GENERATION (Train Once)"]
+    augT --> lgbm["Engine A: LightGBM (Gradient Boosting)"]:::model
+    augT --> xgb["Engine B: XGBoost (Histogram)"]:::model
+    
+    lgbm --> preds["Generating Raw Alpha..."]:::process
+    xgb --> preds
+    augL --> preds
+    
+    preds --> rawSignal["Raw Signal (Ensemble Average)"]:::output
   end
 
-  %% ===================== UPLOAD + OPS =====================
-  subgraph OPS["PHASE 4: UPLOAD + OPS CHECKS"]
-    prod --> slots["Resolve slots via get_models (case-insensitive)"]:::logic
-    csv --> allow{"Upload allowed?"}:::logic
-    allow --> skip["DRYRUN: skip upload"]:::logic
-    allow --> up["upload_predictions"]:::output
-    slots --> up
-
-    csv --> corrM["Cross-model correlation (live preds)"]:::logic
-    corrM --> dup{"Any pair > 0.985?"}:::logic
-    dup --> fix["Flag duplicates; change ONE lever next round"]:::logic
-    dup --> ok["Diversification OK"]:::process
+  %% ===================== RISK MOLDING =====================
+  subgraph RISK["PHASE 4: RISK MOLDING (Factor Neutralization)"]
+    readyT --> pca["PCA: Extract 50 Latent Factors (Beta)"]:::model
+    pca --> riskVec["Project Live Data -> Risk Vectors"]:::process
+    readyL --> riskVec
+    
+    rawSignal --> mold{"ORTHOGONALIZATION MATRIX"}:::logic
+    riskVec --> mold
+    
+    mold -->|0% Neut| n00["KZ_CORE_N00 (Pure Alpha)"]:::output
+    mold -->|50% Neut| n50["KZ_BAL_N50 (Hybrid)"]:::output
+    mold -->|75% Neut| n75["KZ_DEF_N75 (Bunker)"]:::output
   end
 
-  %% ===================== FLOW CONTROL =====================
-  dry --> api
-  prod --> api
-```
-## Legend
-- **Raw**: datasets, config, environment variables  
-- **Process**: ingestion, transforms, orchestration steps  
-- **Model**: LightGBM / XGBoost training + inference components  
-- **Logic**: safety gates, splits, neutralization / de-meta decisions  
-- **Output**: CSV artifacts + Numerai API uploads
+  %% ===================== DEPLOYMENT =====================
+  subgraph OPS["PHASE 5: DEPLOYMENT"]
+    n00 & n50 & n75 --> rank["Rank -> Uniform Dist"]:::process
+    rank --> csv["Write CSVs"]:::output
+    
+    prod --> resolve["Resolve Model IDs"]:::logic
+    resolve --> upload["API Upload"]:::process
+    csv --> upload
+  end
