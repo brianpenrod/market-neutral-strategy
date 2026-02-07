@@ -1,71 +1,111 @@
-# PROJECT: KINETIC ZERO (v2.3)
-**Production-Grade Quantitative Deployment for Numerai (Multi-Model Ops + Research Loop)**
+# Market Neutral Strategy: Causal Factor-Aware Alpha Engine
 
-![Status](https://img.shields.io/badge/Status-Production-success)
-![Platform](https://img.shields.io/badge/Platform-Numerai-white)
-![Language](https://img.shields.io/badge/Python-3.10%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+### Codename: **Operation Overwatch**
 
----
-
-## Executive Summary
-**Author:** Dr. Brian Penrod, DBA  
-**Codename:** **KINETIC ZERO** **Mission:** Generate rank-ordered predictive signals for the Numerai Tournament via a controlled, reproducible pipeline.  
-**Architecture:** Multi-slot deployment using a **Twin-Engine ensemble** (LightGBM + XGBoost) with optional **feature neutralization** and optional **de-meta orthogonalization**.  
-**Key Discipline:** **Chronological regime separation** (no look-ahead bias) + strict **ops safety gates** (DRYRUN by default).
+> **Executive Summary**  
+> A high-performance quantitative trading engine designed for the Numerai Hedge Fund Tournament. This system leverages **Causal Discovery (LiNGAM)** to identify idiosyncratic alpha and uses a proprietary **Risk Molding** protocol to orthogonalize signals against latent market factors (beta), aiming for purer, less-correlated returns.
 
 ---
 
-## System Architecture
-For the detailed operational diagram, see **[SYSTEM_MAP.md](SYSTEM_MAP.md)**.
+## 🏗️ System Architecture: The Operational Map
 
-### Executive Map (one-screen view)
+The architecture follows a strict event-driven pipeline designed for **v5.2 "Faith2"** data integrity. It cleanly separates **Alpha Generation (Signal)** from **Risk Management (Exposure)**, enabling dynamic portfolio construction from a single intelligence source.
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{
-  "primaryColor":"#E8F0FE",
-  "primaryTextColor":"#0B1020",
-  "primaryBorderColor":"#1E3A8A",
-  "lineColor":"#475569",
-  "secondaryColor":"#ECFDF5",
-  "tertiaryColor":"#FFF7ED",
-  "fontFamily":"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
-  "fontSize":"16px"
-}}}%%
-flowchart TB
+graph TD
+    subgraph "Data Logistics"
+        A[Data Ingest v5.2] -->|Int8 -> Float32| B[Quantization Handler]
+        B -->|Live Intel Patch| C[Universe Validation]
+    end
 
-  %% --- NODE STYLES (add padding to reduce truncation) ---
-  classDef config fill:#E0F2FE,stroke:#0369A1,stroke-width:2px,color:#0B1020,padding:12px;
-  classDef secrets fill:#FEF3C7,stroke:#B45309,stroke-width:2px,color:#0B1020,padding:12px;
-  classDef script fill:#EDE9FE,stroke:#6D28D9,stroke-width:2px,color:#0B1020,padding:12px;
-  classDef gate fill:#FFE4E6,stroke:#BE123C,stroke-width:2px,color:#0B1020,padding:14px;
-  classDef action fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#0B1020,padding:12px;
-  classDef output fill:#FCE7F3,stroke:#BE185D,stroke-width:2px,color:#0B1020,padding:12px;
-
-  %% --- EXECUTIVE MAP ---
-  cfg["config.yaml<br/>(runtime + model specs)"]:::config
-  env["Env vars<br/>(NUMERAI_PUBLIC_ID / SECRET_KEY)"]:::secrets
-  cmd["numerai_multi_model_commander.py"]:::script
-  mode{"MODE"}:::gate
-
-  dry["DRYRUN<br/>Download + Train + Predict<br/>Write CSVs"]:::action
-  prod["PRODUCTION<br/>Wait round-open + Upload<br/>per model slot"]:::action
-
-  out["submissions/<br/>submission_&lt;MODEL&gt;.csv"]:::output
-
-  cfg --> cmd
-  env --> cmd
-  cmd --> mode
-  mode --> dry
-  mode --> prod
-  dry --> out
-  prod --> out
+    subgraph "Alpha Generation (The Signal)"
+        C -->|Top 35 Features| D{Causal Tactician}
+        D -->|LiNGAM Algorithm| E[Directional Dependency Graph]
+        E -->|Interaction Terms| F[Feature Augmentation]
+        F -->|Gradient Boosting| G[LightGBM Ensemble]
+        F -->|Histogram Tree| H[XGBoost Ensemble]
+        G & H --> I[Raw Alpha Signal]
+    end
+    
+    subgraph "Risk Molding Engine (The Shield)"
+        C -->|PCA Decomposition| J[Latent Factor Identification]
+        J -->|Top 50 Market Factors| K[Risk Vectors]
+        I --> L{Orthogonalization Matrix}
+        K --> L
+        L -->|0% Neutralization| M[Profile: AGGRESSIVE]
+        L -->|50% Neutralization| N[Profile: BALANCED]
+        L -->|75% Neutralization| O[Profile: DEFENSIVE]
+    end
+    
+    M & N & O --> P[API Deployment]
 ```
-## 3. Developer Note on Latency & Scalability
 
-**Strategic Architecture:** While the current pipeline utilizes high-level Python libraries (**Polars**, **XGBoost**), the architecture is strictly designed for modularity and high-performance computing to meet low-latency requirements.
+---
 
-* **Core Engine:** The data ingestion layer utilizes **Polars**—leveraging **Rust** under the hood—to ensure non-blocking execution and superior memory management compared to standard Pandas.
-* **Scalability:** This infrastructure guarantees the throughput necessary to scale from the current "Medium" feature set to the **'Super Massive' (~2,000+ feature)** dataset without refactoring.
-* **Hardware Roadmap:** Designed for transition from Cloud GPU (A100) to Local HPC (Ryzen 9 / RTX 5090) for on-premise model training.
-  
-© 2026 Dr. Brian Penrod. All Rights Reserved.
+## 🧠 Methodology: The "Sniper" Doctrine
+
+Traditional quantitative models often suffer from **over-neutralization**—stripping out valid signals in an attempt to reduce volatility (the “shotgun” approach). This system is built around a **“sniper” doctrine**: separate **market beta (systemic risk)** from **idiosyncratic alpha (true skill)**, then shape exposure intentionally.
+
+### 1) Causal Discovery (Signal)
+
+Rather than relying solely on linear correlations, this engine uses **LiNGAM (Linear Non-Gaussian Acyclic Model)** to detect **directional** relationships among features.
+
+- **The problem:** Correlation does not imply causation. A stock can move because the *market* moved—not because a feature was predictive.
+- **The solution:** Build a **Directed Acyclic Graph (DAG)** over the feature set to discover directional links and engineer interaction terms capturing “hidden physics” in the data.  
+  Example: $Feature\_A \rightarrow Feature\_B$
+
+### 2) Ensemble Stability
+
+To reduce variance and resist overfitting, the raw alpha signal is produced via a **50/50 weighted ensemble** of:
+
+- **LightGBM** — leaf-wise growth optimized for speed and strong tabular performance.
+- **XGBoost** — histogram-based learning well-suited to **v5.2 quantized** data characteristics.
+
+---
+
+## 🛡️ Risk Molding: Active Exposure Management
+
+**Risk Molding** is the proprietary process of sculpting the return distribution into specific volatility / neutrality profiles. Instead of training separate models, the system trains **one high-conviction alpha model**, then mathematically projects its signal onto different “risk planes.”
+
+### Factor Extraction + Orthogonalization
+
+1. Extract the top **50 latent market factors** (e.g., sector, momentum, volatility, value proxies) via **PCA**.
+2. Orthogonalize the alpha signal against those factor vectors using **ridge regression residualization**.
+
+### Profiles
+
+| Profile | Ticker | Neutralization | Role in Portfolio |
+|---|---|---:|---|
+| Aggressive (Core) | `KZ_CORE_N00` | 0% | **Pure alpha** exposure. Captures maximum upside during trending markets. Higher volatility; higher potential Sharpe. Captures “look above/below” liquidity sweeps. |
+| Balanced (Hybrid) | `KZ_BAL_N50` | 50% | **Sharpe optimizer.** Removes the loudest market noise while retaining directional signal. |
+| Defensive (Bunker) | `KZ_DEF_N75` | 75% | **Market neutral.** Strictly orthogonal to market moves. Returns driven primarily by stock-specific selection (true contribution). |
+
+### Validation Note
+
+Live production analysis indicates a **0.69 correlation** between the Aggressive and Defensive profiles—evidence that the system meaningfully decouples alpha from beta while maintaining shared informational structure.
+
+---
+
+## ⚡ Technical Specifications
+
+- **Language:** Python 3.12  
+- **Data Structure:** Polars (Rust-based DataFrame) for high-velocity ingest of int8 quantized Parquet files  
+- **Compute:** GPU-accelerated training (CUDA) for rapid retraining cycles  
+- **Robustness:** Implements a **Live Intel Patch** that forces fresh data acquisition per epoch to reduce look-ahead bias and stale-universe errors
+
+---
+
+## 📈 Performance Objectives
+
+- **Universe Size:** ~7,000 global equities  
+- **Consensus Conviction:** Recent validation sets identified a **“Strong Buy” consensus (>0.8 probability)** on **~11.5%** of the universe, demonstrating selectivity  
+- **Distribution:** Targeting a uniform distribution of ranked predictions *(Mean ≈ 0.50, Std ≈ 0.29)* to maximize information entropy in submissions
+
+---
+
+## 👤 Author
+
+**Brian Penrod, DBA**  
+Retired U.S. Army Special Forces CSM | Doctor of Business Administration (Finance)
+
+> “I combine military strategic planning with advanced quantitative finance to build systems that prioritize risk management, data integrity, and tactical execution.”
