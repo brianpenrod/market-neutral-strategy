@@ -87,6 +87,7 @@ graph TD
     resolve --> upload["API Upload"]:::process
     csv --> upload
   end
+```
 🧠 Methodology: The "Sniper" Doctrine
 Traditional quantitative models often suffer from "over-neutralization"—stripping out valid signals in an attempt to reduce volatility (the "Shotgun" approach). This system employs a "Sniper" doctrine, distinguishing between Market Beta (systemic risk) and Idiosyncratic Alpha (true skill).
 
