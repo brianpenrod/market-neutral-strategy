@@ -102,6 +102,26 @@ Live production analysis indicates a **0.69 correlation** between the Aggressive
 - **Distribution:** Targeting a uniform distribution of ranked predictions *(Mean ≈ 0.50, Std ≈ 0.29)* to maximize information entropy in submissions
 
 ---
+---
+
+## 🔮 Future Operations: Phase 4 (Active R&D)
+
+**Current Status:** *Prototyping / Pre-Alpha*
+
+To further decouple alpha generation from standard linear factors, the next evolutionary phase introduces a **"Hybrid Warfare"** architecture. This phase integrates Deep Learning to capture non-linear residuals that decision tree ensembles (LightGBM/XGBoost) typically miss.
+
+### Tactical Objective: "The Neural Scout"
+While GBDTs excel at tabular splits, they struggle with complex, continuous feature interactions. Phase 4 deploys a parallel Neural Network stream to act as an orthogonal signal generator.
+
+### Planned Architecture
+1.  **Autoencoder Feature Extraction:** Compressing the 2,000+ feature space into a dense latent state (embedding) to reduce noise.
+2.  **ResNet / MLP Stream:** A 3-layer residual network running in parallel to the "Causal Tactician."
+3.  **Ensemble Logic:**
+    $$Final\_Alpha = w_1(Tree\_Signal) + w_2(Neural\_Signal)$$
+    *Where $w$ is dynamically adjusted based on regime volatility.*
+
+> **Hypothesis:** By ensembling a manifold-learning model (NN) with rectangle-learning models (Trees), we minimize correlation errors and increase the Sharpe Ratio of the `KZ_DEF_N75` profile.
+> 
 
 ## 👤 Author
 
