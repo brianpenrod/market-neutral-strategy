@@ -1,14 +1,3 @@
-# Market Neutral Strategy: Causal Factor-Aware Alpha Engine
-### Codename: "Operation Overwatch"
-
-> **Executive Summary:** A high-performance quantitative trading engine designed for the Numerai Hedge Fund Tournament. This system leverages **Causal Discovery (LiNGAM)** to identify idiosyncratic alpha and utilizes a proprietary **Risk Molding** protocol to orthogonalize signals against latent market factors (Beta), ensuring pure, uncorrelated returns.
-
----
-
-## 🏗 System Architecture: The Operational Map
-
-The architecture follows a strict Event-Driven Pipeline designed for **v5.2 "Faith2"** data integrity. It separates the **Alpha Generation** (Signal) from the **Risk Management** (Exposure), allowing for dynamic portfolio construction from a single intelligence source.
-
 ```mermaid
 graph TD
   %% ===================== STYLES =====================
@@ -21,117 +10,130 @@ graph TD
   %% ===================== CONTROL PLANE =====================
   subgraph CONTROL["CONTROL PLANE"]
     env["Env vars: PUBLIC_ID + SECRET_KEY"]:::raw --> gate{"RISK_MODE"}:::logic
-    target["Target: target (v5.2 Standard)"]:::raw --> gate
+    target["Primary: target (v5.2 Standard)"]:::raw --> gate
+    mt["Multi-Target: ender / cyrusd / teager2b / victor"]:::raw --> gate
     gate --> dry["DRYRUN: No Upload"]:::logic
     gate --> prod["PRODUCTION: Live Upload"]:::logic
   end
 
   %% ===================== LOGISTICS =====================
-  subgraph LOGISTICS["PHASE 1: INTELLIGENCE LOGISTICS (v5.2)"]
+  subgraph LOGISTICS["PHASE 1: INTELLIGENCE LOGISTICS (v5.2 Sunshine)"]
     api["NumerAPI"]:::process --> patch{"Live Intel Patch"}:::logic
     patch -->|Force Delete| fresh["Download Fresh live.parquet"]:::process
-    patch -->|Check Exists| train["Load train.parquet"]:::process
-    
-    fresh --> castL["Cast Int8 -> Float32"]:::process
-    train --> castT["Cast Int8 -> Float32"]:::process
-    
+    patch -->|Saturday Sync| train["Download train.parquet + features.json"]:::process
+
+    train --> fset["Feature Selection: Medium Set (780 dims)"]:::process
+    train --> tload["Load All Target Columns"]:::process
+
+    fresh --> castL["Cast Int8 → Float32 / Fill Nulls"]:::process
+    fset --> castT["Cast Int8 → Float32 / Fill Nulls"]:::process
+    tload --> castT
+
     castL --> uniCheck{"Universe Safety Check (>5500 rows?)"}:::logic
     uniCheck -->|Pass| readyL["Live Matrix (Float32)"]:::raw
     castT --> readyT["Train Matrix (Float32)"]:::raw
   end
 
-  %% ===================== CAUSAL DISCOVERY =====================
-  subgraph CAUSAL["PHASE 2: CAUSAL DISCOVERY (LiNGAM)"]
-    readyT --> lingam["DirectLiNGAM: Learn Structure"]:::model
-    lingam --> pairs["Identify Causal Pairs (A -> B)"]:::output
-    
-    pairs --> augT["Augment Train (Interaction Terms)"]:::process
-    pairs --> augL["Augment Live (Interaction Terms)"]:::process
-    
-    readyT --> augT
-    readyL --> augL
+  %% ===================== PURGED CV =====================
+  subgraph CV["PHASE 2: PURGED WALK-FORWARD CV"]
+    readyT --> purge["5-Fold Purged Walk-Forward Split"]:::process
+    purge --> gap["Purge Gap: 4 Eras"]:::logic
+    gap --> trainSet["Train Partition"]:::raw
+    gap --> valSet["Validation Partition"]:::raw
   end
 
-  %% ===================== THE CORE FORGE =====================
-  subgraph FORGE["PHASE 3: ALPHA GENERATION (Train Once)"]
-    augT --> lgbm["Engine A: LightGBM (Gradient Boosting)"]:::model
-    augT --> xgb["Engine B: XGBoost (Histogram)"]:::model
-    
-    lgbm --> preds["Generating Raw Alpha..."]:::process
-    xgb --> preds
-    augL --> preds
-    
-    preds --> rawSignal["Raw Signal (Ensemble Average)"]:::output
+  %% ===================== NEURAL TACTICIAN =====================
+  subgraph NEURAL["PHASE 3A: NEURAL TACTICIAN (DAE-MLP)"]
+    trainSet --> dae["Denoising Autoencoder (0.1 Swap Noise)"]:::model
+    dae --> bottleneck["64-Dim Latent Bottleneck"]:::process
+    bottleneck --> encoder["2-Layer Encoder (1024 → 64) / SiLU + BN"]:::process
+
+    encoder --> seed1["ResMLP Seed 1"]:::model
+    encoder --> seed2["ResMLP Seed 2"]:::model
+    encoder --> seed3["ResMLP Seed 3"]:::model
+    encoder --> seed4["ResMLP Seed 4"]:::model
+    encoder --> seed5["ResMLP Seed 5"]:::model
+
+    seed1 & seed2 & seed3 & seed4 & seed5 --> nnAvg["5-Seed Average (Rank Normalized)"]:::output
+  end
+
+  %% ===================== MULTI-TARGET TREES =====================
+  subgraph TREES["PHASE 3B: MULTI-TARGET TREE ENSEMBLE"]
+    trainSet --> lgbm["LightGBM (10K trees, lr=0.005, GPU)"]:::model
+    trainSet --> xgb["XGBoost (10K trees, lr=0.005, CUDA)"]:::model
+
+    lgbm --> lgbT1["ender_20 (40%)"]:::process
+    lgbm --> lgbT2["cyrusd_20 (25%)"]:::process
+    lgbm --> lgbT3["teager2b_20 (20%)"]:::process
+    lgbm --> lgbT4["victor_20 (15%)"]:::process
+
+    xgb --> xgbT1["ender_20 (40%)"]:::process
+    xgb --> xgbT2["cyrusd_20 (25%)"]:::process
+    xgb --> xgbT3["teager2b_20 (20%)"]:::process
+    xgb --> xgbT4["victor_20 (15%)"]:::process
+
+    lgbT1 & lgbT2 & lgbT3 & lgbT4 --> lgbBlend["LGB Weighted Rank Avg"]:::output
+    xgbT1 & xgbT2 & xgbT3 & xgbT4 --> xgbBlend["XGB Weighted Rank Avg"]:::output
+  end
+
+  %% ===================== BINARY ALPHA =====================
+  subgraph BINARY["PHASE 3C: BINARY ALPHA (Raw Features)"]
+    trainSet --> ridge["RidgeClassifier (α=10.0)"]:::model
+    ridge --> threshold{"> 0.5 Threshold Detection"}:::logic
+    threshold --> binSignal["Binary Decision Function (Rank Normalized)"]:::output
+  end
+
+  %% ===================== ENSEMBLE BLENDER =====================
+  subgraph BLEND["PHASE 4: ENSEMBLE BLENDER"]
+    nnAvg --> defBlend{"DEFAULT BLEND"}:::logic
+    lgbBlend --> defBlend
+    xgbBlend --> defBlend
+    binSignal -->|5% Tilt| defBlend
+
+    nnAvg --> binBlend{"BINARY BLEND"}:::logic
+    lgbBlend --> binBlend
+    xgbBlend --> binBlend
+    binSignal -->|40% Weight| binBlend
+
+    defBlend --> rawDefault["Raw Default Signal"]:::output
+    binBlend --> rawBinary["Raw Binary Signal"]:::output
   end
 
   %% ===================== RISK MOLDING =====================
-  subgraph RISK["PHASE 4: RISK MOLDING (Factor Neutralization)"]
+  subgraph RISK["PHASE 5: RISK ENGINE (Factor Neutralization)"]
     readyT --> pca["PCA: Extract 50 Latent Factors (Beta)"]:::model
-    pca --> riskVec["Project Live Data -> Risk Vectors"]:::process
+    pca --> riskVec["Project Live Data → Risk Vectors"]:::process
     readyL --> riskVec
-    
-    rawSignal --> mold{"ORTHOGONALIZATION MATRIX"}:::logic
+
+    rawDefault --> mold{"ORTHOGONALIZATION MATRIX (Ridge Residuals)"}:::logic
+    rawBinary --> mold
     riskVec --> mold
-    
-    mold -->|0% Neut| n00["KZ_CORE_N00 (Pure Alpha)"]:::output
-    mold -->|50% Neut| n50["KZ_BAL_N50 (Hybrid)"]:::output
-    mold -->|75% Neut| n75["KZ_DEF_N75 (Bunker)"]:::output
+
+    mold -->|"0% Neut / Default"| n00["KZ_CORE_N00 (Raw Return Alpha)"]:::output
+    mold -->|"90% Neut / Default"| n90["KZ_DEF_N90 (High Sharpe / Low Drawdown)"]:::output
+    mold -->|"20% Neut / Binary"| n20["KZ_BINARY_N20 (Tail-Event Capture)"]:::output
   end
 
   %% ===================== DEPLOYMENT =====================
-  subgraph OPS["PHASE 5: DEPLOYMENT"]
-    n00 & n50 & n75 --> rank["Rank -> Uniform Dist"]:::process
-    rank --> csv["Write CSVs"]:::output
-    
-    prod --> resolve["Resolve Model IDs"]:::logic
-    resolve --> upload["API Upload"]:::process
+  subgraph OPS["PHASE 6: DEPLOYMENT"]
+    n00 & n90 & n20 --> rank["Rank → Uniform Distribution"]:::process
+    rank --> csv["Write Submission CSVs"]:::output
+
+    prod --> resolve["Resolve Model Slot IDs"]:::logic
+    resolve --> upload["NumerAPI Upload"]:::process
     csv --> upload
   end
+
+  %% ===================== PERSISTENCE =====================
+  subgraph CACHE["WEIGHT CACHE (Google Drive)"]
+    dae -.->|Save| weights["Weights_v92/"]:::raw
+    lgbm -.->|Save| weights
+    xgb -.->|Save| weights
+    ridge -.->|Save| weights
+    pca -.->|Save| weights
+    weights -.->|"Load (Tue-Fri)"| quickInfer["Daily Inference (~2 min)"]:::process
+  end
 ```
-🧠 Methodology: The "Sniper" Doctrine
-Traditional quantitative models often suffer from "over-neutralization"—stripping out valid signals in an attempt to reduce volatility (the "Shotgun" approach). This system employs a "Sniper" doctrine, distinguishing between Market Beta (systemic risk) and Idiosyncratic Alpha (true skill).
-
-1. Causal Discovery (Signal)
-Rather than relying solely on linear correlations, this engine utilizes LiNGAM (Linear Non-Gaussian Acyclic Model) to detect directional causality between features.
-
-The Problem: Correlation does not imply causation. A stock might move because the market moved, not because of the feature.
-
-The Solution: The engine constructs a Directed Acyclic Graph (DAG) of the feature set to find non-linear interaction pairs (e.g., Feature_A → causes → Feature_B). These are engineered into interaction terms to capture the "hidden physics" of the market.
-
-2. Ensemble Stability
-To minimize variance and prevent overfitting, the raw signal is generated via a 50/50 weighted ensemble of:
-
-LightGBM: Optimized for leaf-wise growth and speed.
-
-XGBoost: Utilizing histogram-based learning for robust handling of the v5.2 quantized data.
-
-🛡️ Risk Molding: Active Exposure Management
-"Risk Molding" is the proprietary process of sculpting the return distribution to fit specific volatility profiles. Instead of training three separate models, the system trains one high-conviction Alpha model and then mathematically projects it onto different risk planes.
-
-The system extracts the top 50 latent market factors (representing Sector, Momentum, Volatility, and Value) via PCA and orthogonalizes the alpha signal against them using Ridge Regression residuals.
-
-Profile	Ticker	Neutralization	Role in Portfolio
-Aggressive (Core)	KZ_CORE_N00	0%	Pure Alpha. Captures maximum upside during trending markets. High volatility, high potential Sharpe. Captures the "Look Above/Below" liquidity sweeps.
-Balanced (Hybrid)	KZ_BAL_N50	50%	Sharpe Optimizer. Removes the "loudest" market noise while retaining directional signal.
-Defensive (Bunker)	KZ_DEF_N75	75%	Market Neutral. Strictly orthogonal to market moves. Generates returns solely from stock-specific selection (True Contribution).
-Validation: Live production analysis confirms a 0.69 correlation between the Aggressive and Defensive profiles, proving the system successfully decouples Alpha from Beta.
-
-⚡ Technical Specifications
-Language: Python 3.12
-
-Data Structure: Polars (Rust-based DataFrame) for high-velocity ingest of int8 quantized Parquet files.
-
-Compute: GPU-Accelerated training (CUDA) for rapid retraining cycles.
-
-Robustness: Implements a "Live Intel Patch" that forces fresh data acquisition per epoch to prevent look-ahead bias or stale universe errors.
-
-📈 Performance Objectives
-Universe Size: ~7,000 Global Equities.
-
-Consensus Conviction: In recent validation sets, the system identified a "Strong Buy" consensus (>0.8 probability) on 11.5% of the universe, demonstrating high selectivity.
-
-Distribution: Perfect uniform distribution of ranked predictions (Mean: 0.50, Std: 0.29), ensuring maximum information entropy in the submission.
-
 Author Profile
 Brian Penrod, DBA Retired US Army Special Forces CSM | Doctor of Business Administration (Finance)
 
