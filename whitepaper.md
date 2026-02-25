@@ -1,85 +1,84 @@
-# Operation Overwatch: Causal Factor-Aware Alpha Generation
-**Author:** Brian Penrod, DBA  
-**Date:** February 2026  
-**System Version:** v5.2 "Faith2"
+# White Paper: Operation Overwatch v9.2
+
+**Hybrid Multi-Target Ensemble with Neural Latent Feature Extraction**
 
 ---
 
-## Abstract
+## BLUF (Bottom Line Up Front)
 
-In the domain of quantitative finance, the primary challenge is distinguishing between **Market Beta** (systemic risk) and **Idiosyncratic Alpha** (true skill). Traditional machine learning models often conflate the two, leading to high correlation with major market factors and subsequent degradation of performance in novel regimes. 
-
-**Operation Overwatch** introduces a novel architecture for the Numerai Tournament that utilizes **Linear Non-Gaussian Acyclic Models (LiNGAM)** for Causal Discovery and a proprietary **Risk Molding** protocol. By identifying directional dependencies between features before training, and orthogonalizing the output against latent market factors post-inference, the system generates robust, market-neutral alpha with a verifiable distinctness from standard momentum or value strategies.
+Operation Overwatch v9.2 represents a tactical refinement of the v9.1 quantitative trading framework for the Numerai tournament. Key upgrades include a Multi-Target Tree Ensemble using corrected v5.2 targets, a re-optimized Denoising Autoencoder (DAE) bottleneck for enhanced Neural Sharpe, and the restoration of Binary Alpha signal integrity by reverting to raw feature inputs.
 
 ---
 
-## 1. Introduction: The Alpha Decay Problem
+## 1. Architectural Overview
 
-Standard gradient boosting models (XGBoost, LightGBM) are powerful pattern recognition engines. However, without strict constraints, they tend to "learn" the market cycle. For example, if Tech stocks are rallying, the model learns to prioritize "Tech-like" features. When the cycle turns, the model fails.
+Overwatch v9.2 utilizes a heterogeneous ensemble designed to capture non-linear relationships while maintaining rigorous risk neutrality. The system blends three distinct modeling methodologies:
 
-This paper proposes a solution based on two core tenets:
-1.  **Causality over Correlation:** A feature is only valuable if it has a directional impact on returns, independent of the market.
-2.  **Active Risk Molding:** Alpha is not just what you predict; it is what remains after you remove the Beta.
-
-## 2. Intelligence Logistics (v5.2 "Faith2")
-
-The system operates on the Numerai v5.2 dataset, utilizing **Int8 quantization** for high-velocity inference.
-
-### 2.1 The Live Intel Patch
-Data integrity is paramount. To prevent "Stale Universe" errors—where a model predicts on a past stock universe rather than the current live set—the system implements a **Live Intel Patch**. This logic gate forces a fresh acquisition of the daily `live.parquet` file at runtime, ensuring 100% coverage of the ~7,000 stock investment universe.
-
-### 2.2 Quantization Handling
-The v5.2 data compresses features into integer bins (0-4). While efficient for storage, this destroys precision in linear algebra operations. Operation Overwatch implements an automated casting layer that converts `int8` inputs to `float32` prior to the Causal Discovery phase, restoring the mathematical fidelity required for structure learning.
-
-## 3. The Causal Tactician (Signal Generation)
-
-Unlike traditional models that throw all 2,000+ features into a regressor, Overwatch employs a pre-training **Causal Discovery** phase.
-
-### 3.1 LiNGAM Algorithm
-We utilize the **DirectLiNGAM** algorithm to construct a Directed Acyclic Graph (DAG) of the feature set. This allows us to identify **Interaction Pairs** where:
-$$Feature_A \rightarrow Feature_B$$
-This implies that $Feature_A$ is a parent node affecting $Feature_B$.
-
-### 3.2 Feature Augmentation
-Once these "Hidden Physics" are identified, the system engineers interaction terms (e.g., $Feature_A \times Feature_B$) and injects them into the training set. This allows the ensemble engines to learn non-linear causal structures that linear correlation matrices miss.
-
-## 4. The Alpha Forge (Ensemble Architecture)
-
-The raw signal is generated via a "Train Once" architecture to ensure consistency. The augmented dataset is fed into two parallel engines:
-
-1.  **LightGBM (Gradient Boosting):** configured for leaf-wise growth to capture complex, deep interactions.
-2.  **XGBoost (Histogram):** configured for depth-wise growth to ensure robust generalization.
-
-The outputs are averaged (50/50) to produce the `Raw_Alpha_Signal`.
-
-## 5. Risk Molding: The Orthogonalization Protocol
-
-This is the system's core innovation. Rather than retraining the model for different risk tolerances, we mathematically project the single `Raw_Alpha_Signal` onto different risk manifolds.
-
-### 5.1 Latent Factor Extraction (PCA)
-We apply **Principal Component Analysis (PCA)** to the feature set to extract the top 50 latent components. In financial terms, these components represent the "Market Beta"—hidden factors like Sector, Momentum, Volatility, and Size.
-
-### 5.2 Orthogonalization
-We use Ridge Regression to calculate the residual of our Alpha against these Beta factors:
-$$\hat{y}_{neutral} = \hat{y}_{raw} - \beta (\text{MarketFactors})$$
-
-### 5.3 Deployment Profiles
-This process creates three distinct investment strategies from a single intelligence source:
-
-* **KZ_CORE_N00 (Aggressor):** 0% Neutralization. Pure Causal Alpha. This profile is allowed to hold market beta if the Causal Engine deems it necessary. It captures maximum upside during trending markets.
-* **KZ_BAL_N50 (Hybrid):** 50% Factor Neutralization. A balanced approach that dampens volatility while retaining directional conviction.
-* **KZ_DEF_N75 (Bunker):** 75% Factor Neutralization. A strictly market-neutral profile. This model generates returns solely from stock-specific selection (True Contribution), making it uncorrelated to major market indices.
-
-## 6. Performance & Validation
-
-In live production (Round 1198), the system demonstrated:
-* **Universe Coverage:** 7,030 Global Equities.
-* **Decoupling:** A correlation of **0.69** between the Aggressive and Defensive profiles. This proves that the Risk Molding engine successfully separates the signal into distinct Alpha and Beta components.
-* **Conviction:** A "Strong Buy" consensus (>0.80 probability) on 11.5% of the universe, indicating high selectivity rather than random noise.
-
-## 7. Conclusion
-
-Operation Overwatch represents a shift from "Black Box" machine learning to **Gray Box** causal inference. By understanding *why* features interact (Causality) and actively managing *what* the model is exposed to (Risk Molding), the system achieves a level of robustness and tactical flexibility that standard "Shotgun" models cannot match.
+- **Deep Tree Ensemble:** Multi-target LightGBM and XGBoost models.
+- **Neural Tactician:** A DAE-initialized Residual MLP (ResMLP).
+- **Binary Alpha:** A high-regularization Ridge Classifier for tail-event detection.
 
 ---
-*© 2026 Kinetic Zero Research. All Rights Reserved.*
+
+## 2. Key Enhancements & Component Analysis
+
+### 2.1 Multi-Target Tree Strategy
+
+To increase predictive diversity and reduce variance, the tree-based models now target a weighted blend of four specific v5.2 objectives:
+
+| Target | Weight | Role |
+|--------|--------|------|
+| `target_ender_20` | 40% | Primary |
+| `target_cyrusd_20` | 25% | Auxiliary |
+| `target_teager2b_20` | 20% | Auxiliary |
+| `target_victor_20` | 15% | Auxiliary |
+
+By training on multiple horizons and styles, the ensemble gains resilience against regime shifts in the Numerai meta-market.
+
+### 2.2 Neural Refinement (DAE v2)
+
+Data-driven testing in v9.1 indicated that a 128-dimension latent space was "too wide," introducing noise that degraded the Sharpe ratio. v9.2 reverts the bottleneck to **64 dimensions**.
+
+- **Architecture:** 2-layer encoder (1024 → 64) using SiLU activation and Batch Normalization.
+- **Objective:** Reconstruction of the "medium" feature set to extract a compressed, denoised signal for the downstream ResMLP.
+
+### 2.3 Signal Restoration: Binary Alpha
+
+Validation diagnostics revealed that PCA-transformed features lost approximately **54% of the signal** (dropping CORR from 0.683 to 0.310). v9.2 restores the Binary Alpha component to raw features.
+
+- **Logic:** A Ridge Classifier (α = 10.0) identifies stocks with a high probability of exceeding the `0.5` threshold.
+- **Integration:** This component provides a 5% "tactical tilt" to the default blend and a 40% weight to the `KZ_BINARY_N20` slot.
+
+---
+
+## 3. Risk Management & Neutralization
+
+The Risk Engine utilizes a 50-component PCA to identify and neutralize common factor exposures.
+
+| Model Slot | Neutralization Ratio | Primary Blend | Target Profile |
+|------------|---------------------|---------------|----------------|
+| `KZ_CORE_N00` | 0% | Default | Maximum Raw Returns |
+| `KZ_DEF_N90` | 90% | Default | High Sharpe / Low Drawdown |
+| `KZ_BINARY_N20` | 20% | Binary | Tail-Event Capture |
+
+---
+
+## 4. Tactical Implementation (Workflow)
+
+The model follows a bifurcated execution schedule to optimize compute resources on Google Colab (T4 GPU):
+
+**Saturday — Full Training**
+> 5-fold Purged Walk-Forward Cross-Validation. Includes DAE training, multi-target tree fitting, and risk vector generation. ~25–30 minute execution.
+
+**Tuesday–Friday — Daily Inference**
+> Weights are cached in Google Drive. Daily live data is processed through the frozen architecture for submission in ~2 minutes.
+
+---
+
+## 5. Statistical Validation
+
+| Parameter | Configuration |
+|-----------|--------------|
+| **Feature Set** | Medium (v5.2) |
+| **CV Strategy** | Purged Walk-Forward (Purge Gap = 4 eras) |
+| **Regularization** | Heavy ℓ₂ penalty on Binary Alpha to mitigate the high dimensionality (780 features) of the raw input |
