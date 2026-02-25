@@ -1,127 +1,53 @@
-# Market Neutral Strategy: Causal Factor-Aware Alpha Engine
-
-### Codename: **Operation Overwatch**
-
-> **Executive Summary**  
-> A high-performance quantitative trading engine designed for the Numerai Hedge Fund Tournament. This system leverages **Causal Discovery (LiNGAM)** to identify idiosyncratic alpha and uses a proprietary **Risk Molding** protocol to orthogonalize signals against latent market factors (beta), aiming for purer, less-correlated returns.
-
----
-
-## 🏗️ System Architecture: The Operational Map
-
-The architecture follows a strict event-driven pipeline designed for **v5.2 "Faith2"** data integrity. It cleanly separates **Alpha Generation (Signal)** from **Risk Management (Exposure)**, enabling dynamic portfolio construction from a single intelligence source.
-
-```mermaid
-graph TD
-    subgraph "Data Logistics"
-        A[Data Ingest v5.2] -->|Int8 -> Float32| B[Quantization Handler]
-        B -->|Live Intel Patch| C[Universe Validation]
+project: Operation Overwatchversion: 9.2status: Deployment Readyclassification: Quantitative Alpha Researchtags:numeraiquantitative-financemachine-learningrisk-managementOperation Overwatch v9.2BLUF (Bottom Line Up Front)Operation Overwatch v9.2 is a production-grade quantitative trading framework designed for the Numerai tournament. It utilizes a hybrid multi-target ensemble integrating deep gradient boosting, neural latent feature extraction, and high-regularization binary classification to navigate the v5.2 "Sunshine" data regime.Mission ProfileThis repository serves as the primary research and execution engine for Operation Iron Triad. Developed by a retired U.S. Army Special Forces CSM with a DBA in Finance, this system transitions professional-grade risk management and tactical precision into the quantitative finance space.Objective: Maximize Sharpe and CORR on the Numerai leaderboard while maintaining strict factor neutrality.Operational Status: Active.Data Version: v5.2 (Medium Feature Set).Systems Mapgraph TD
+    %% Data Acquisition Layer
+    subgraph Data_Sync [Data Acquisition & Pre-Processing]
+        A1[NumerAPI Connection] --> A2[v5.2 Parquet: Train/Live]
+        A2 --> A3[Feature Selection: Medium Set]
+        A3 --> A4[Fill Nulls / Type Casting]
     end
 
-    subgraph "Alpha Generation (The Signal)"
-        C -->|Top 35 Features| D{Causal Tactician}
-        D -->|LiNGAM Algorithm| E[Directional Dependency Graph]
-        E -->|Interaction Terms| F[Feature Augmentation]
-        F -->|Gradient Boosting| G[LightGBM Ensemble]
-        F -->|Histogram Tree| H[XGBoost Ensemble]
-        G & H --> I[Raw Alpha Signal]
+    %% Model Component Layer
+    subgraph Signal_Generation [Multi-Model Signal Generation]
+        A4 --> B1[Neural Tactician: DAE + ResMLP]
+        A4 --> B2[Tree Ensemble: LGBM + XGBoost]
+        A4 --> B3[Binary Alpha: Ridge Classifier]
+        
+        %% Neural Specifics
+        B1 --> B1a[DAE 64-Dim Bottleneck]
+        B1a --> B1b[5-Seed MLP Average]
+        
+        %% Tree Specifics
+        B2 --> B2a[Multi-Target Ensemble]
+        B2a --> B2b[Weighted Rank Normalization]
     end
-    
-    subgraph "Risk Molding Engine (The Shield)"
-        C -->|PCA Decomposition| J[Latent Factor Identification]
-        J -->|Top 50 Market Factors| K[Risk Vectors]
-        I --> L{Orthogonalization Matrix}
-        K --> L
-        L -->|0% Neutralization| M[Profile: AGGRESSIVE]
-        L -->|50% Neutralization| N[Profile: BALANCED]
-        L -->|75% Neutralization| O[Profile: DEFENSIVE]
+
+    %% Aggregation & Risk Layer
+    subgraph Tactical_Control [Risk Engine & Neutralization]
+        B1b --> C1[Ensemble Blender]
+        B2b --> C1
+        B3 --> C1
+        
+        A4 --> C2[PCA Risk Vectorization: 50 Components]
+        C1 --> C3[Factor Neutralization]
+        C2 --> C3
     end
-    
-    M & N & O --> P[API Deployment]
-```
 
----
+    %% Submission Layer
+    subgraph Deployment [Model Slot Deployment]
+        C3 --> D1[KZ_CORE_N00: 0% Neut]
+        C3 --> D2[KZ_DEF_N90: 90% Neut]
+        C3 --> D3[KZ_BINARY_N20: 20% Neut + Binary Tilt]
+        
+        D1 --> E1[NumerAPI Upload]
+        D2 --> E1
+        D3 --> E1
+    end
 
-## 🧠 Methodology: The "Sniper" Doctrine
-
-Traditional quantitative models often suffer from **over-neutralization**—stripping out valid signals in an attempt to reduce volatility (the “shotgun” approach). This system is built around a **“sniper” doctrine**: separate **market beta (systemic risk)** from **idiosyncratic alpha (true skill)**, then shape exposure intentionally.
-
-### 1) Causal Discovery (Signal)
-
-Rather than relying solely on linear correlations, this engine uses **LiNGAM (Linear Non-Gaussian Acyclic Model)** to detect **directional** relationships among features.
-
-- **The problem:** Correlation does not imply causation. A stock can move because the *market* moved—not because a feature was predictive.
-- **The solution:** Build a **Directed Acyclic Graph (DAG)** over the feature set to discover directional links and engineer interaction terms capturing “hidden physics” in the data.  
-  Example: $Feature\_A \rightarrow Feature\_B$
-
-### 2) Ensemble Stability
-
-To reduce variance and resist overfitting, the raw alpha signal is produced via a **50/50 weighted ensemble** of:
-
-- **LightGBM** — leaf-wise growth optimized for speed and strong tabular performance.
-- **XGBoost** — histogram-based learning well-suited to **v5.2 quantized** data characteristics.
-
----
-
-## 🛡️ Risk Molding: Active Exposure Management
-
-**Risk Molding** is the proprietary process of sculpting the return distribution into specific volatility / neutrality profiles. Instead of training separate models, the system trains **one high-conviction alpha model**, then mathematically projects its signal onto different “risk planes.”
-
-### Factor Extraction + Orthogonalization
-
-1. Extract the top **50 latent market factors** (e.g., sector, momentum, volatility, value proxies) via **PCA**.
-2. Orthogonalize the alpha signal against those factor vectors using **ridge regression residualization**.
-
-### Profiles
-
-| Profile | Ticker | Neutralization | Role in Portfolio |
-|---|---|---:|---|
-| Aggressive (Core) | `KZ_CORE_N00` | 0% | **Pure alpha** exposure. Captures maximum upside during trending markets. Higher volatility; higher potential Sharpe. Captures “look above/below” liquidity sweeps. |
-| Balanced (Hybrid) | `KZ_BAL_N50` | 50% | **Sharpe optimizer.** Removes the loudest market noise while retaining directional signal. |
-| Defensive (Bunker) | `KZ_DEF_N75` | 75% | **Market neutral.** Strictly orthogonal to market moves. Returns driven primarily by stock-specific selection (true contribution). |
-
-### Validation Note
-
-Live production analysis indicates a **0.69 correlation** between the Aggressive and Defensive profiles—evidence that the system meaningfully decouples alpha from beta while maintaining shared informational structure.
-
----
-
-## ⚡ Technical Specifications
-
-- **Language:** Python 3.12  
-- **Data Structure:** Polars (Rust-based DataFrame) for high-velocity ingest of int8 quantized Parquet files  
-- **Compute:** GPU-accelerated training (CUDA) for rapid retraining cycles  
-- **Robustness:** Implements a **Live Intel Patch** that forces fresh data acquisition per epoch to reduce look-ahead bias and stale-universe errors
-
----
-
-## 📈 Performance Objectives
-
-- **Universe Size:** ~7,000 global equities  
-- **Consensus Conviction:** Recent validation sets identified a **“Strong Buy” consensus (>0.8 probability)** on **~11.5%** of the universe, demonstrating selectivity  
-- **Distribution:** Targeting a uniform distribution of ranked predictions *(Mean ≈ 0.50, Std ≈ 0.29)* to maximize information entropy in submissions
-
----
----
-
-## 🔮 Future Operations: Phase 4 (Active R&D)
-
-**Current Status:** *Prototyping / Pre-Alpha*
-
-To further decouple alpha generation from standard linear factors, the next evolutionary phase introduces a **"Hybrid Warfare"** architecture. This phase integrates Deep Learning to capture non-linear residuals that decision tree ensembles (LightGBM/XGBoost) typically miss.
-
-### Tactical Objective: "The Neural Scout"
-While GBDTs excel at tabular splits, they struggle with complex, continuous feature interactions. Phase 4 deploys a parallel Neural Network stream to act as an orthogonal signal generator.
-
-### Planned Architecture
-1.  **Autoencoder Feature Extraction:** Compressing the 2,000+ feature space into a dense latent state (embedding) to reduce noise.
-2.  **ResNet / MLP Stream:** A 3-layer residual network running in parallel to the "Causal Tactician."
-3.  **Ensemble Logic:**
-    $$Final\_Alpha = w_1(Tree\_Signal) + w_2(Neural\_Signal)$$
-    *Where $w$ is dynamically adjusted based on regime volatility.*
-
-> **Hypothesis:** By ensembling a manifold-learning model (NN) with rectangle-learning models (Trees), we minimize correlation errors and increase the Sharpe Ratio of the `KZ_DEF_N75` profile.
-> 
+    %% Styling
+    style Signal_Generation fill:#1a1a1a,stroke:#333,stroke-width:2px,color:#fff
+    style Tactical_Control fill:#2d3436,stroke:#00b894,stroke-width:2px,color:#fff
+    style Deployment fill:#2d3436,stroke:#0984e3,stroke-width:2px,color:#fff
+Architectural Framework1. Neural Tactician (DAE-MLP)Bottleneck: 64-dimension latent space (optimized for signal-to-noise ratio).Initialization: Denoising Autoencoder (DAE) with 0.1 swap noise.Prediction: 5-seed Residual MLP (ResMLP) ensemble using SiLU activations and Batch Normalization.2. Multi-Target Tree EnsembleModels: LightGBM and XGBoost (10,000 max trees, 0.005 learning rate).Targeting: Weighted exposure to four specific objectives:target_ender_20 (40%)target_cyrusd_20 (25%)target_teager2b_20 (20%)target_victor_20 (15%)3. Binary AlphaInput: Raw features (780 dimensions).Model: Ridge Classifier ($\alpha=10.0$).Function: Tail-event detection and tactical tilt for the KZ_BINARY_N20 model slot.Model Risk OverlayThis component treats model error as a primary risk factor, deploying institutional-grade mitigation strategies to ensure portfolio stability:Over-fitting Mitigation: Reverted neural latent bottleneck from 128 to 64 dimensions to force compressed, robust representation of the feature space.Regime Shift Defense: Ensemble targets ender, cyrusd, teager2b, and victor concurrently to reduce reliance on any single market regime.Signal Decay Guardrails: Ridge Classifier operates on raw feature inputs to capture tail events lost during PCA transformation.Exposure Control: A 50-component PCA generates risk vectors, facilitating Ridge-based factor neutralization to align final predictions with strict volatility bounds.Model Roster & Risk ConfigurationThe system deploys three distinct model slots to provide diversified exposure:Slot NameBlend TypeNeutralizationTactical FocusKZ_CORE_N00Default0%Raw Return AlphaKZ_DEF_N90Default90%Defense / Low VolatilityKZ_BINARY_N20Binary20%Tail-Event CaptureExecution SOPStandard Training Cycle (Saturdays)Synchronize: Download latest train.parquet and features.json.Train: Execute 5-fold Purged Walk-Forward CV (4-era gap).Validate: Review CORR, Sharpe, and Max Drawdown diagnostics.Persist: Save model weights to Google Drive.Daily Submission (Tue–Fri)Inference: Load cached weights from /Weights_v92/.Live Sync: Pull daily live.parquet.Neutralize: Apply 50-component PCA risk neutralization.Upload: Deploy predictions via NumerAPI.Technical SpecificationsEnvironment: Google Colab (Python 3.10+, T4/L4 GPU).Workflow Integration: Primary capture via Evernote; deep research and technical documentation managed in Obsidian.Dependencies: polars, lightgbm, xgboost, pytorch, numerapi.
 
 ## 👤 Author
 
