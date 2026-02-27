@@ -130,7 +130,7 @@ This component treats model error as a primary risk factor, deploying institutio
 
 | Component | Detail |
 |-----------|--------|
-| **Environment** | Google Colab (Python 3.10+, T4/L4 GPU) |
+| **Environment** | Google Colab (Python 3.10+, A100 GPU) |
 | **Workflow** | Primary capture via Evernote; deep research & docs in Obsidian |
 | **Dependencies** | `polars`, `lightgbm`, `xgboost`, `pytorch`, `numerapi` |
 
