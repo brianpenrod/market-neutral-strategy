@@ -1,7 +1,13 @@
+# System Map: Operation Overwatch v9.3
+**Hybrid Multi-Target Ensemble with Neural Latent Feature Extraction**
+
+---
 
 ### Architectural Overview
 
 The pipeline follows a six-phase architecture that separates signal generation from risk management. Raw v5.2 data flows through a Purged Walk-Forward CV split into three parallel alpha engines — a DAE-initialized neural ensemble, a multi-target gradient boosting ensemble, and a binary tail-event classifier. Their outputs converge at the Ensemble Blender, which constructs two distinct signal profiles (Default and Binary). The Risk Engine then orthogonalizes each signal against 50 PCA-derived market factors at varying neutralization ratios, producing three deployment-ready model slots with differentiated return profiles.
+
+v9.3 corrects a critical DAE training integrity issue (val-era data leak via `X_all`), fixes daily inference model object handling, and adds three operational modules: Automated Weekly Scorecard (Cell 11), Ablation Study Harness (Cell 12), and Professional Monitoring Suite (Cell 13).
 
 ```mermaid
 graph TD
@@ -15,7 +21,7 @@ graph TD
   %% ===================== CONTROL PLANE =====================
   subgraph CONTROL["CONTROL PLANE"]
     env["Env vars: PUBLIC_ID + SECRET_KEY"]:::raw --> gate{"RISK_MODE"}:::logic
-    target["Primary: target (v5.2 Standard)"]:::raw --> gate
+    target["Primary: target_ender_20 (v5.2)"]:::raw --> gate
     mt["Multi-Target: ender / cyrusd / teager2b / victor"]:::raw --> gate
     gate --> dry["DRYRUN: No Upload"]:::logic
     gate --> prod["PRODUCTION: Live Upload"]:::logic
@@ -49,7 +55,7 @@ graph TD
 
   %% ===================== NEURAL TACTICIAN =====================
   subgraph NEURAL["PHASE 3A: NEURAL TACTICIAN (DAE-MLP)"]
-    trainSet --> dae["Denoising Autoencoder (0.1 Swap Noise)"]:::model
+    trainSet --> dae["Denoising Autoencoder (GaussianNoise σ=0.1)"]:::model
     dae --> bottleneck["64-Dim Latent Bottleneck"]:::process
     bottleneck --> encoder["2-Layer Encoder (1024 → 64) / SiLU + BN"]:::process
 
@@ -131,15 +137,73 @@ graph TD
 
   %% ===================== PERSISTENCE =====================
   subgraph CACHE["WEIGHT CACHE (Google Drive)"]
-    dae -.->|Save| weights["Weights_v92/"]:::raw
+    dae -.->|Save| weights["Weights_v93/"]:::raw
     lgbm -.->|Save| weights
     xgb -.->|Save| weights
     ridge -.->|Save| weights
     pca -.->|Save| weights
     weights -.->|"Load (Tue-Fri)"| quickInfer["Daily Inference (~2 min)"]:::process
   end
-```
-Author Profile
-Brian Penrod, DBA Retired US Army Special Forces CSM | Doctor of Business Administration (Finance)
 
-"I combine military strategic planning with advanced quantitative finance to build systems that prioritize risk management, data integrity, and tactical execution."
+  %% ===================== OBSERVABILITY =====================
+  subgraph OBS["OBSERVABILITY (v9.3)"]
+    csv -.->|archive_submission| monitor["Submission Log (Drive)"]:::raw
+    monitor --> scorecard["Cell 11: Weekly Scorecard\n(live scores + regime tag)"]:::process
+    monitor --> monSuite["Cell 13: Professional Monitoring Suite\n(5-panel diagnostics)"]:::process
+    valSet --> ablation["Cell 12: Ablation Study Harness\n(6-variant, Week 12)"]:::process
+  end
+```
+
+---
+
+### Operational Cadence
+
+| Schedule | Cells | Description |
+|----------|-------|-------------|
+| Saturday | 1–8 | Full training pipeline (~25–30 min) |
+| Tue–Fri | 1–5, 9 | Daily inference + submission (~2 min) |
+| Sunday/Monday | 1–5, 11 | Weekly Scorecard — live scores + regime tag |
+| Week 12 | 1–8, 12 | Ablation Study Harness — 6-variant component test |
+| Weekly (w/ Cell 11) | 13 | Professional Monitoring Suite — 5-panel diagnostics |
+| After every submission | 13 → `archive_submission()` | Maintain submission log |
+| Anytime | 13 → `status_dashboard()` | Quick health check |
+
+---
+
+### Cell Inventory
+
+| Cell | Name | Function |
+|------|------|----------|
+| 1 | Install Dependencies | Environment setup |
+| 2 | Imports | Library and module loading |
+| 3 | Configuration | Single source of truth for all hyperparameters |
+| 4 | Google Drive Mount | Directory structure and weight path setup |
+| 5 | Helpers & Utilities | Shared functions (era key, rank norm, etc.) |
+| 6 | Neural Architectures | GaussianNoise, DAE, ResMLP, NeuralTactician |
+| 7 | Risk Engine | PCA factor extraction and neutralization |
+| 8 | Full Training Pipeline | Saturday retraining — all components |
+| 9 | Daily Submission | Tue–Fri fast inference from cached weights |
+| 10 | Download Results | Retrieve scored predictions from Numerai API |
+| 11 | Automated Weekly Scorecard | Live scores + market regime + CSV append |
+| 12 | Ablation Study Harness | 6-variant systematic component test at Week 12 |
+| 13 | Professional Monitoring Suite | 5-panel institutional diagnostics |
+
+---
+
+### Resolved Issues (v9.3)
+
+| Component | Issue | Resolution |
+|-----------|-------|------------|
+| DAE (NeuralTactician) | Autoencoder trained on `X_all`, leaking validation-era data into latent space | Train on `X_train` only |
+| NeuralTactician | `SwapNoise` label mismatched actual additive Gaussian implementation | Renamed to `GaussianNoise` |
+| `predict_multi_target` | `Booster` vs. `LGBMRegressor` object type not handled on daily inference path | Conditional branch on object type |
+| Training pipeline | `t_X_all` tensor retained unnecessarily post-DAE training | Removed (~3GB GPU savings) |
+
+---
+
+### Author
+
+**Brian Penrod, DBA**
+Retired US Army Special Forces CSM | Doctor of Business Administration (Finance)
+
+*"I combine military strategic planning with advanced quantitative finance to build systems that prioritize risk management, data integrity, and tactical execution."*
